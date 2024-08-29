@@ -943,18 +943,3 @@ uint32_t millis()
     micros() ;
     return TotalMillis ;
 }
-
-// void delay(unsigned long ms)
-// {
-// 	uint16_t start = (uint16_t)micros();
-// 	uint16_t lms = ms ;
-
-// TODO BUG: lms unsigned so always '> 0' no ?
-// 	while (lms > 0) {
-// 		if (((uint16_t)micros() - start) >= 1000) {
-// 			lms--;
-// 			start += 1000;
-// 		}
-// 	}
-// }
- 
