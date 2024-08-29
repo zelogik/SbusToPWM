@@ -162,9 +162,6 @@ void set_outputs()
     #define TICKS2WAITONE_HALF  520    // Wait one and a half bit period.
     #define DELAY150    3000
     #define DELAY20     400
-    #define DELAY40     800
-    #define DELAY60     1200
-    #define TIME_LONG   50000
     #define PULSE_SCALE 20
     #define LASTRCV_TIMEOUT 10000
     #define INTERRUPT_EXEC_CYCL   112      // Cycles to execute interrupt routines from interrupt.
@@ -180,9 +177,6 @@ void set_outputs()
     #define TICKS2WAITONE_HALF100  240  // Wait one and a half bit period.
     #define DELAY150    2400
     #define DELAY20     320
-    #define DELAY40     640
-    #define DELAY60     960
-    #define TIME_LONG   40000
     #define PULSE_SCALE 16
     #define LASTRCV_TIMEOUT 8000
     #define ELAPSED 4
@@ -200,9 +194,6 @@ void set_outputs()
     #define TICKS2WAITONE_HALF  208    // Wait one and a half bit period.
     #define DELAY150    1200
     #define DELAY20     160
-    #define DELAY40     320
-    #define DELAY60     480
-    #define TIME_LONG   20000
     #define PULSE_SCALE 8
     #define LASTRCV_TIMEOUT 4000
     #define ELAPSED 3
