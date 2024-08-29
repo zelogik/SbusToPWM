@@ -112,7 +112,7 @@ uint8_t *Ports[NUMBER_CHANNELS] = {
     (uint8_t *)&PORT_ADC1,
     (uint8_t *)&PORT_ADC2,
     (uint8_t *)&PORT_ADC3
-} ;
+};
 
 uint8_t Bits[NUMBER_CHANNELS] =
 {
@@ -132,26 +132,26 @@ uint8_t Bits[NUMBER_CHANNELS] =
     (1<<BIT_ADC1),
     (1<<BIT_ADC2),
     (1<<BIT_ADC3)
-} ;
+};
 
 void set_outputs()
 {
-    DDR_IO2 |= (1<<BIT_IO2) ;
-    DDR_IO3 |= (1<<BIT_IO3) ;
-    DDR_IO4 |= (1<<BIT_IO4) ;
-    DDR_IO5 |= (1<<BIT_IO5) ;
-    DDR_IO6 |= (1<<BIT_IO6) ;
-    DDR_IO7 |= (1<<BIT_IO7) ;
-    DDR_IO8 |= (1<<BIT_IO8) ;
-    DDR_IO9 |= (1<<BIT_IO9) ;
-    DDR_IO10 |= (1<<BIT_IO10) ;
-    DDR_IO11 |= (1<<BIT_IO11) ;
-    DDR_IO12 |= (1<<BIT_IO12) ;
-    DDR_IO13 |= (1<<BIT_IO13) ;
-    DDR_ADC0 |= (1<<BIT_ADC0) ;
-    DDR_ADC1 |= (1<<BIT_ADC1) ;
-    DDR_ADC2 |= (1<<BIT_ADC2) ;
-    DDR_ADC3 |= (1<<BIT_ADC3) ;
+    DDR_IO2 |= (1<<BIT_IO2);
+    DDR_IO3 |= (1<<BIT_IO3);
+    DDR_IO4 |= (1<<BIT_IO4);
+    DDR_IO5 |= (1<<BIT_IO5);
+    DDR_IO6 |= (1<<BIT_IO6);
+    DDR_IO7 |= (1<<BIT_IO7);
+    DDR_IO8 |= (1<<BIT_IO8);
+    DDR_IO9 |= (1<<BIT_IO9);
+    DDR_IO10 |= (1<<BIT_IO10);
+    DDR_IO11 |= (1<<BIT_IO11);
+    DDR_IO12 |= (1<<BIT_IO12);
+    DDR_IO13 |= (1<<BIT_IO13);
+    DDR_ADC0 |= (1<<BIT_ADC0);
+    DDR_ADC1 |= (1<<BIT_ADC1);
+    DDR_ADC2 |= (1<<BIT_ADC2);
+    DDR_ADC3 |= (1<<BIT_ADC3);
 }
 
 
@@ -221,60 +221,60 @@ void set_outputs()
 
 // #define FORCE_INDIRECT(ptr) __asm__ __volatile__ ("" : "=e" (ptr) : "0" (ptr))
 
-uint16_t FailsafeTimes[NUMBER_CHANNELS] ;
-uint16_t PulseTimes[NUMBER_CHANNELS] ;
+uint16_t FailsafeTimes[NUMBER_CHANNELS];
+uint16_t PulseTimes[NUMBER_CHANNELS];
 
 // TODO: remove static as already global ?
-static volatile uint8_t State = IDLE ;     //!< Holds the state of the UART.
-static volatile uint8_t Parity ;
+static volatile uint8_t State = IDLE;     //!< Holds the state of the UART.
+static volatile uint8_t Parity;
 static volatile uint8_t SwUartRXData;     //!< Storage for received bits.
 static volatile unsigned char SwUartRXBitCount; //!< RX bit counter.
 
 
 // TODO: clean all that global variables! (almost done)
-const uint16_t FailSafeTimeOut_ms = 500 ;
-uint8_t ChannelSwap ;
-uint8_t EightOnly ;
+const uint16_t FailSafeTimeOut_ms = 500;
+uint8_t ChannelSwap;
+uint8_t EightOnly;
 
 struct t_pulses
 {
-    uint8_t *port ;
-    uint8_t bit ;	
-    uint8_t start ;
-    uint16_t nextTime ;
-} Pulses[8] ;
+    uint8_t *port;
+    uint8_t bit;	
+    uint8_t start;
+    uint16_t nextTime;
+} Pulses[8];
 
-uint8_t PulsesIndex = 0 ;
+uint8_t PulsesIndex = 0;
 
-uint8_t Sbuffer[28] = {0} ;
-uint8_t Sindex = 0 ;
-volatile uint16_t Lastrcv = 0 ;
+uint8_t Sbuffer[28] = {0};
+uint8_t Sindex = 0;
+volatile uint16_t Lastrcv = 0;
 
-uint32_t LastSbusReceived ;
-uint8_t SbusHasBeenReceived ;
+uint32_t LastSbusReceived;
+uint8_t SbusHasBeenReceived;
 
-uint8_t SerialMode ;
+uint8_t SerialMode;
 
 // Copy the failsafe values into the pulse array
 
 void checkInput()
 {
-    uint16_t x ;
-    uint8_t y ;
+    uint16_t x;
+    uint8_t y;
     while ( UCSR0A & (1<<RXC0) )
     {
-        y = UDR0 ;
+        y = UDR0;
         if ( Sindex || ( y == 0x0F ) )
         {
-            Sbuffer[Sindex] = y ;
-            cli() ;
-            x = TCNT1 ;
-            sei() ;
-            Lastrcv = x ;
-            Sindex += 1 ;
+            Sbuffer[Sindex] = y;
+            cli();
+            x = TCNT1;
+            sei();
+            Lastrcv = x;
+            Sindex += 1;
             if (Sindex > 27)
             {
-                Sindex = 27 ;
+                Sindex = 27;
             }
         }
     }
@@ -282,123 +282,123 @@ void checkInput()
 
 void enterFailsafe()
 {
-    uint8_t i ;
-    for ( i = 0 ; i < NUMBER_CHANNELS ; i += 1 )
+    uint8_t i;
+    for ( i = 0; i < NUMBER_CHANNELS; i += 1 )
     {
-        PulseTimes[i] = FailsafeTimes[i] ;
+        PulseTimes[i] = FailsafeTimes[i];
     }
 }
 
 
 static uint8_t processSBUSframe()
 {
-    uint8_t inputbitsavailable = 0 ;
-    uint8_t i ;
-    uint32_t inputbits = 0 ;
-    uint8_t *sbus = Sbuffer ;
+    uint8_t inputbitsavailable = 0;
+    uint8_t i;
+    uint32_t inputbits = 0;
+    uint8_t *sbus = Sbuffer;
     if ( Sindex < 25 )
     {
-        return 0 ;
+        return 0;
     }
     if ( sbus[24] != 0 )
     {
-//      UDR0 = sbus[24] ;
-//      UDR0 = sbus[0] ;
-        Sindex = 0 ;
-        return 0 ;		// Not a valid SBUS frame
+//      UDR0 = sbus[24];
+//      UDR0 = sbus[0];
+        Sindex = 0;
+        return 0;		// Not a valid SBUS frame
     }
 
     if ( *sbus++ != 0x0F )
     {
-        Sindex = 0 ;
-        return 0 ;		// Not a valid SBUS frame
+        Sindex = 0;
+        return 0;		// Not a valid SBUS frame
     }
-//  UDR0 = sbus[20] ;
-//  UDR0 = sbus[21] ;
+//  UDR0 = sbus[20];
+//  UDR0 = sbus[21];
 
 #ifdef DEBUG
-    PORTC ^= 0x20 ;
+    PORTC ^= 0x20;
 #endif
 
-    LastSbusReceived = millis() ;
-    SbusHasBeenReceived = 1 ;
+    LastSbusReceived = millis();
+    SbusHasBeenReceived = 1;
 
-    for ( i = 0 ; i < 16 ; i += 1 )
+    for ( i = 0; i < 16; i += 1 )
     {
-        uint16_t temp ;
+        uint16_t temp;
 
         while ( inputbitsavailable < 11 )
         {
-            inputbits |= (uint32_t)*sbus++ << inputbitsavailable ;
-            inputbitsavailable += 8 ;
+            inputbits |= (uint32_t)*sbus++ << inputbitsavailable;
+            inputbitsavailable += 8;
         }
 
-        temp = ( (int16_t)( inputbits & 0x7FF ) - 0x3E0 ) * 5 / 8 + 1500 ;
+        temp = ( (int16_t)( inputbits & 0x7FF ) - 0x3E0 ) * 5 / 8 + 1500;
 
         if ( ( temp > 800 ) && ( temp < 2200 ) )
         {
-            PulseTimes[i] = temp ;
+            PulseTimes[i] = temp;
         }
-        inputbitsavailable -= 11 ;
-        inputbits >>= 11 ;
+        inputbitsavailable -= 11;
+        inputbits >>= 11;
     }
-    Sindex = 0 ;
-    return 1 ;
+    Sindex = 0;
+    return 1;
 }
 
 void setup()	// run once, when the sketch starts
 {
-    PORTB = 0 ;			// Outputs low
-    PORTC &= 0xF0 ;	// Outputs low
-    PORTD &= 0x03 ;	// Outputs low
+    PORTB = 0;			// Outputs low
+    PORTC &= 0xF0;	// Outputs low
+    PORTD &= 0x03;	// Outputs low
 
-    set_outputs() ;
+    set_outputs();
     uint8_t j = 0;
-    for ( uint8_t i = 0 ; i < NUMBER_CHANNELS ; i += 1 )
+    for ( uint8_t i = 0; i < NUMBER_CHANNELS; i += 1 )
     {
-        uint16_t x ;
-        x = FailsafeTimes[i] ;
+        uint16_t x;
+        x = FailsafeTimes[i];
         if ( ( x < 800 ) || ( x > 2200 ) )
         {
-            x = 1500 ;
-            FailsafeTimes[i] = x ;
-            j = 1 ;
+            x = 1500;
+            FailsafeTimes[i] = x;
+            j = 1;
         }
     }
     if ( j )
     {
-        writeFailsafe() ;	// Need to update them
+        writeFailsafe();	// Need to update them
     }
 
     // Timer1
-    TCCR1A = 0x00 ;    //Init.
-    TCCR1B = 0xC1 ;    // I/p noise cancel, rising edge, Clock/1
-    TIFR1 = (1 << OCF1A) ;
-    TIMSK1 |= ( 1<< OCIE1A ) ;
+    TCCR1A = 0x00;    //Init.
+    TCCR1B = 0xC1;    // I/p noise cancel, rising edge, Clock/1
+    TIFR1 = (1 << OCF1A);
+    TIMSK1 |= ( 1<< OCIE1A );
 
-    initUart() ;
-    readFailsafe() ;
+    initUart();
+    readFailsafe();
 
     // Set Failsafe & invert output Pin
-    DDRC &= ~0x30 ;
-    PORTC |= 0x30 ;	// AD4/5 digital input with pullup
+    DDRC &= ~0x30;
+    PORTC |= 0x30;	// AD4/5 digital input with pullup
 
 #ifdef DEBUG
-    DDRC |= 0x20 ;
-    PORTC &= ~0x20 ;
+    DDRC |= 0x20;
+    PORTC &= ~0x20;
 #endif
 
     if ( ( PINC & 0x20 ) == 0 )		// Link on AD5
     {
-        ChannelSwap = 1 ;
+        ChannelSwap = 1;
     }
     // OnlyEight Pin
-    DDRD &= ~0x02 ;
-    PORTD |= 0x02 ;
+    DDRD &= ~0x02;
+    PORTD |= 0x02;
 
     if ( ( PIND & 0x02 ) == 0 )		// Link on PD1
     {
-        EightOnly = 1 ;
+        EightOnly = 1;
     }
 
     sei();
@@ -407,11 +407,11 @@ void setup()	// run once, when the sketch starts
 
 void setPulseTimes( uint8_t Five2_8 )
 {
-    uint16_t *pulsePtr = PulseTimes ;
-    uint16_t times[4] ;				// The 4 pulse lengths to process
-    uint8_t j = 0 ;
-    uint8_t k ;
-    uint16_t m ;
+    uint16_t *pulsePtr = PulseTimes;
+    uint16_t times[4];				// The 4 pulse lengths to process
+    uint8_t j = 0;
+    uint8_t k;
+    uint16_t m;
      
     uint8_t move_on = Five2_8 * 4;
     pulsePtr += move_on;
@@ -423,32 +423,32 @@ void setPulseTimes( uint8_t Five2_8 )
         ( k >= 8 )? k -= 8 :  k += 8;
     }
 
-    for (uint8_t i = 0 ; i < 4 ; i += 1 )
+    for (uint8_t i = 0; i < 4; i += 1 )
     {
-        times[i] = pulsePtr[i] ;                   // Make local copy of pulses to process
+        times[i] = pulsePtr[i];                   // Make local copy of pulses to process
     }
 
     uint16_t time;
     for (uint8_t i = 0; i < 4; i++)
     {
         checkInput();
-        m = times[0] ;                                  // First pulse
+        m = times[0];                                  // First pulse
 
-        for (uint8_t i = 1 ; i < 4 ; i += 1 )                  // Find shortest pulse
+        for (uint8_t i = 1; i < 4; i += 1 )                  // Find shortest pulse
         {
             if ( times[i] < m )                         // If this one is shorter
             {
-                m = times[i] ;                          // Note value
-                j = i ;                                 // Note index
+                m = times[i];                          // Note value
+                j = i;                                 // Note index
             }
         }
 
-        times[j] = 0xFFFF ;                             // Make local copy very large
-        j += k ;                                        // Add on offset
-        Pulses[i+4].port = Pulses[i].port = Ports[j] ;    // Set the port for this pulse
-        Pulses[i+4].bit = Pulses[i].bit = Bits[j] ;       // Set the bit for this pulse
-        Pulses[i].start = 1 ;                           // Mark the start
-        Pulses[i+4].start = 0 ;                           // Mark the end
+        times[j] = 0xFFFF;                             // Make local copy very large
+        j += k;                                        // Add on offset
+        Pulses[i+4].port = Pulses[i].port = Ports[j];    // Set the port for this pulse
+        Pulses[i+4].bit = Pulses[i].bit = Bits[j];       // Set the bit for this pulse
+        Pulses[i].start = 1;                           // Mark the start
+        Pulses[i+4].start = 0;                           // Mark the end
 
         if (i == 0)
         {
@@ -460,16 +460,16 @@ void setPulseTimes( uint8_t Five2_8 )
         if ( i < 3)
         {
             Pulses[i].nextTime = time + ( DELAY20 * (i + 1));           // Next pulse starts in 20 uS
-            Pulses[i+3].nextTime = time + m * PULSE_SCALE ;   // This pulse ends at this time
+            Pulses[i+3].nextTime = time + m * PULSE_SCALE;   // This pulse ends at this time
         }
         // Last Pulse wave
         else
         {
-            Pulses[i+4].nextTime = time + DELAY20 * 125 ;
-            Pulses[i+3].nextTime = time + m * PULSE_SCALE ;   // This pulse ends at this time
-            cli() ;
-            OCR1A = time ;				// Set for first interrupt
-            sei() ;
+            Pulses[i+4].nextTime = time + DELAY20 * 125;
+            Pulses[i+3].nextTime = time + m * PULSE_SCALE;   // This pulse ends at this time
+            cli();
+            OCR1A = time;				// Set for first interrupt
+            sei();
         }
     }
    
@@ -479,29 +479,29 @@ ISR(TIMER1_COMPA_vect)
 {
     if ( State == PULSING )
     {
-        uint8_t *port ;
-        uint8_t bit ;
-        uint16_t index = PulsesIndex ;
+        uint8_t *port;
+        uint8_t bit;
+        uint16_t index = PulsesIndex;
         if ( index < 8 )
         {
-            port = Pulses[index].port ;				// Output port to modify
-            bit = Pulses[index].bit ;					// Output bit to modify
-            OCR1A = Pulses[index].nextTime ;	// Time of next action
+            port = Pulses[index].port;				// Output port to modify
+            bit = Pulses[index].bit;					// Output bit to modify
+            OCR1A = Pulses[index].nextTime;	// Time of next action
             if ( Pulses[index].start )				// If starting pulse
             {
-                *port |= bit ;									// Set the output
+                *port |= bit;									// Set the output
             }
             else
             {
-                *port &= ~bit ;									// Else clear it
+                *port &= ~bit;									// Else clear it
             }
-            index += 1 ;
-            PulsesIndex = index ;					// Next entry
+            index += 1;
+            PulsesIndex = index;					// Next entry
         }
         if ( index >= 8 )
         {
-            DISABLE_TIMER_INTERRUPT( ) ;			// We have finished the 4 pulses
-            State = IDLE ;
+            DISABLE_TIMER_INTERRUPT( );			// We have finished the 4 pulses
+            State = IDLE;
         }
     }
     else
@@ -513,7 +513,7 @@ ISR(TIMER1_COMPA_vect)
 
 void readFailsafe()
 {
-    eeprom_read_block( FailsafeTimes, (const void*)0, 32 ) ;
+    eeprom_read_block( FailsafeTimes, (const void*)0, 32 );
 }
 
 void eeprom_write_byte_cmp (uint8_t dat, uint16_t pointer_eeprom)
@@ -522,97 +522,97 @@ void eeprom_write_byte_cmp (uint8_t dat, uint16_t pointer_eeprom)
     while(EECR & (1<<EEPE)) /* make sure EEPROM is ready */
     {
     }
-    EEAR  = pointer_eeprom ;
+    EEAR  = pointer_eeprom;
 
-    EECR |= 1<<EERE ;
-    if(dat == EEDR) return ;
+    EECR |= 1<<EERE;
+    if(dat == EEDR) return;
 
-    EEDR  = dat ;
-    uint8_t flags=SREG ;
-    cli() ;
-    EECR |= 1<<EEMPE ;
-    EECR |= 1<<EEPE ;
-    SREG = flags ;
+    EEDR  = dat;
+    uint8_t flags=SREG;
+    cli();
+    EECR |= 1<<EEMPE;
+    EECR |= 1<<EEPE;
+    SREG = flags;
 }
 
 void eeWriteBlockCmp( const void *i_pointer_ram, uint16_t i_pointer_eeprom, size_t size )
 {
-    const char* pointer_ram = (const char*)i_pointer_ram ;
-    uint16_t    pointer_eeprom = i_pointer_eeprom ;
+    const char* pointer_ram = (const char*)i_pointer_ram;
+    uint16_t    pointer_eeprom = i_pointer_eeprom;
     while(size)
         {
-        eeprom_write_byte_cmp( *pointer_ram++, pointer_eeprom++ ) ;
-        size -= 1 ;
+        eeprom_write_byte_cmp( *pointer_ram++, pointer_eeprom++ );
+        size -= 1;
     }
 }
 
 void writeFailsafe()
 {
-    eeWriteBlockCmp( (const void*)FailsafeTimes, (uint16_t)0, 32 ) ;
+    eeWriteBlockCmp( (const void*)FailsafeTimes, (uint16_t)0, 32 );
 }
 
 // TODO: make cpu agnostic !
 void setSerialMode( uint8_t mode )
 {
 #ifdef UBRROL
-    UBRR0L = UBRROL ;		// For 57600 baud, use 9 for 100000 baud
+    UBRR0L = UBRROL;		// For 57600 baud, use 9 for 100000 baud
 #endif
     if ( mode == 0 )		// 57600
     {
-        UCSR0C = (1<<UCSZ00) | (1<<UCSZ01 ) ;
+        UCSR0C = (1<<UCSZ00) | (1<<UCSZ01 );
     }
     else
     {
-        UCSR0C = (1<<UCSZ00) | (1<<UCSZ01 ) | (1<<UPM01) ;
-        UCSR0B &= ~TXEN0 ;
+        UCSR0C = (1<<UCSZ00) | (1<<UCSZ01 ) | (1<<UPM01);
+        UCSR0B &= ~TXEN0;
     }
-    SerialMode = mode ;
+    SerialMode = mode;
 }
 
 static void initUart()
 {
     // TODO: make CPU agnostic
-    UBRR0H = 0 ;
-    setSerialMode( DEBUG ) ;
-    UCSR0A = 0 ;
-    PORTD |= 3 ;		// Enable pullup
+    UBRR0H = 0;
+    setSerialMode( DEBUG );
+    UCSR0A = 0;
+    PORTD |= 3;		// Enable pullup
 
-    UCSR0B = (1<<RXEN0) ;	// Enable receiver
+    UCSR0B = (1<<RXEN0);	// Enable receiver
 
     // Internal State Variable
-     State = IDLE ;
+     State = IDLE;
 }
 
 
 void checkSwitch()
 {
-    static uint32_t LastSwitchTime ;
-    static uint8_t LastSwitchState ;
+    static uint32_t LastSwitchTime;
+    static uint8_t LastSwitchState;
     if ( millis() - LastSwitchTime < 500 )
     {
-        return ;
+        return;
     }
     if ( ( PINC & 0x10 ) == 0 )   // Switch pressed
     {
         if ( LastSwitchState == 0 )
         {
             // Just pressed
-            LastSwitchTime = millis() ;
-            LastSwitchState = 1 ;
-            uint8_t i ;
-            for ( i = 0 ; i < NUMBER_CHANNELS ; i += 1 )
+            LastSwitchTime = millis();
+            LastSwitchState = 1;
+            uint8_t i;
+            for ( i = 0; i < NUMBER_CHANNELS; i += 1 )
             {
-                FailsafeTimes[i] = PulseTimes[i] ;
+                FailsafeTimes[i] = PulseTimes[i];
             }
-            writeFailsafe() ;
+            writeFailsafe();
         }
     }
     else
     {
         if ( LastSwitchState )
         {
-            LastSwitchState = 0 ;
-            LastSwitchTime = millis() ;
+            LastSwitchState = 0;
+            LastSwitchTime = millis();
         }
     }
 }
@@ -621,24 +621,24 @@ void checkSwitch()
 void setBytes(enum IndexPulses currentPulse)
 {
     static uint16_t LastPulsesStartTime = 0;
-    static unsigned long Timer = 0 ;
-    static uint8_t PulsesNeeded ;
+    static unsigned long Timer = 0;
+    static uint8_t PulsesNeeded;
 
     // only for first 4 pulses
     if ( ( micros() - LastPulsesStartTime ) > 20000 )
     {
-        LastPulsesStartTime += 20000 ;
+        LastPulsesStartTime += 20000;
     }
     // for 5 -> 16 pulses
     if ( ( micros() - Timer ) > 3000)
     {
-        setPulseTimes( currentPulse ) ;  // First 4 pulses
-        CLEAR_TIMER_INTERRUPT( ) ;      // Clear flag in case it is set
-        PulsesIndex = 0 ;               // Start here
-        State = PULSING ;
-        ENABLE_TIMER_INTERRUPT( ) ;     // Allow interrupt to run
-        Timer = micros() ;
-        PulsesNeeded = static_cast<IndexPulses>(currentPulse + 1) ;
+        setPulseTimes( currentPulse );  // First 4 pulses
+        CLEAR_TIMER_INTERRUPT( );      // Clear flag in case it is set
+        PulsesIndex = 0;               // Start here
+        State = PULSING;
+        ENABLE_TIMER_INTERRUPT( );     // Allow interrupt to run
+        Timer = micros();
+        PulsesNeeded = static_cast<IndexPulses>(currentPulse + 1);
     }
 
     // (EightOnly && ( currentPulse == FIVE_TO_EIGHT)) ?  : enum(++)
@@ -652,15 +652,17 @@ void setBytes(enum IndexPulses currentPulse)
 
 int main()	// run over and over again
 {
-    // static uint8_t EightOnly ;
-    static uint16_t LastPulsesStartTime ;
+    // static uint8_t EightOnly;
+    static uint16_t LastPulsesStartTime;
 
-    uint16_t x ;
+    uint16_t x;
     // Arduino/asr -> setup() already executed at start before the main()
 
-    enterFailsafe() ;
-    LastSbusReceived = millis() - ( FailSafeTimeOut_ms + 100 ) ;    // Force failsafe at startup
+    enterFailsafe();
+    LastSbusReceived = millis() - ( FailSafeTimeOut_ms + 100 );    // Force failsafe at startup
 
+    // TODO: Remove that 'nasty' but tricky for loop
+    // TODO: enterFailsafe() could be on setup() ?
     for(;;)
     {
         checkInput();
@@ -677,16 +679,16 @@ int main()	// run over and over again
             {
                 if ( State == IDLE )
                     {
-                        // PulsesNeeded = 0 ;
+                        // PulsesNeeded = 0;
                         // currentPulse = ONE_TO_FOUR;
                     } 
             }
         }
 
 
-        cli() ;
-        x = TCNT1 ;
-        sei() ;
+        cli();
+        x = TCNT1;
+        sei();
 
         if ( ( x - Lastrcv ) > LASTRCV_TIMEOUT )
         // TODO: to many nested if ...
@@ -697,7 +699,7 @@ int main()	// run over and over again
                 {
                     if ( !processSBUSframe() )
                     {
-                        Sindex = 0 ;
+                        Sindex = 0;
                     }
                     else
                     {
@@ -705,16 +707,16 @@ int main()	// run over and over again
                         {
                             if ( State == IDLE )
                             {
-                                uint32_t y = micros() ;
-                                uint16_t rate = 17900 ;
+                                uint32_t y = micros();
+                                uint16_t rate = 17900;
                                 if ( EightOnly )
                                 {
-                                    rate = 8900 ;
+                                    rate = 8900;
                                 }
 
                                 if ( ( y - LastPulsesStartTime ) > rate )
                                 {
-                                    LastPulsesStartTime = y - 21000 ;	// Will start the pulses
+                                    LastPulsesStartTime = y - 21000;	// Will start the pulses
                                 }
                             }
                         }
@@ -724,7 +726,7 @@ int main()	// run over and over again
                 {
                     if ( ( x - Lastrcv ) > 48000 )	// 3mS
                     {
-                        Sindex = 0 ;
+                        Sindex = 0;
                     }	
                 }
             }
@@ -735,20 +737,20 @@ int main()	// run over and over again
 
         if ( ( millis() - LastSbusReceived ) > FailSafeTimeOut_ms )
         {
-            enterFailsafe() ;
+            enterFailsafe();
         }
         
         if ( SbusHasBeenReceived == 0 )
         {
             if ( ( millis() - LastSbusReceived ) > 100 )
             {
-                LastSbusReceived = millis() ;
+                LastSbusReceived = millis();
                 // TODO: only if DEBUG 1 ?
-                setSerialMode( !SerialMode ) ;
+                setSerialMode( !SerialMode );
             }
         }
 
-        checkInput() ;
+        checkInput();
 
     }
 } 
@@ -756,75 +758,75 @@ int main()	// run over and over again
 // replacement millis() and micros()
 // These work polled, no interrupts
 // micros() MUST be called at least once every 4 milliseconds
-uint32_t TotalMillis ;
+uint32_t TotalMillis;
 
 uint32_t micros()
 {
 
-    static uint16_t MillisPrecount ;
-    static uint16_t lastTimerValue ;
-    static uint8_t Correction ;
-    static uint32_t TotalMicros ;
+    static uint16_t MillisPrecount;
+    static uint16_t lastTimerValue;
+    static uint8_t Correction;
+    static uint32_t TotalMicros;
 
-    uint16_t elapsed ;
-    uint8_t millisToAdd ;
-    uint8_t oldSREG = SREG ;
-    cli() ;
-    uint16_t time = TCNT1 ;             // Read timer 1
-    SREG = oldSREG ;
+    uint16_t elapsed;
+    uint8_t millisToAdd;
+    uint8_t oldSREG = SREG;
+    cli();
+    uint16_t time = TCNT1;             // Read timer 1
+    SREG = oldSREG;
 
-    elapsed = time - lastTimerValue ;
-    elapsed += Correction ;
+    elapsed = time - lastTimerValue;
+    elapsed += Correction;
 // Check of 20MHz ?
 #ifdef ELAPSED
-    Correction = elapsed & 0x0F ;
-    elapsed >>= 4 ;
+    Correction = elapsed & 0x0F;
+    elapsed >>= 4;
 #endif
     
-    uint32_t ltime = TotalMicros ;
-    ltime += elapsed ;
-    cli() ;
-    TotalMicros = ltime ;               // Done this way for RPM to work correctly
-    lastTimerValue = time ;
-    SREG = oldSREG ;                    // Still valid from above
+    uint32_t ltime = TotalMicros;
+    ltime += elapsed;
+    cli();
+    TotalMicros = ltime;               // Done this way for RPM to work correctly
+    lastTimerValue = time;
+    SREG = oldSREG;                    // Still valid from above
     
     elapsed += MillisPrecount;
-    millisToAdd = 0 ;
+    millisToAdd = 0;
 
     if ( elapsed  > 3999 )
     {
         // TODO: Understand why 8Mhz need that ...
 #if F_CPU == 8000000L                   // 8MHz clock
-        millisToAdd = 4 ;
+        millisToAdd = 4;
 #else
-        millisToAdd += 4 ;
+        millisToAdd += 4;
 #endif
-        elapsed -= 4000 ;
+        elapsed -= 4000;
     }
     else if ( elapsed  > 2999 )
     {
-        millisToAdd += 3 ;		
-        elapsed -= 3000 ;
+        millisToAdd += 3;		
+        elapsed -= 3000;
     }
     else if ( elapsed  > 1999 )
     {
-        millisToAdd += 2 ;
-        elapsed -= 2000 ;
+        millisToAdd += 2;
+        elapsed -= 2000;
     }
     else if ( elapsed  > 999 )
     {
-        millisToAdd += 1 ;
-        elapsed -= 1000 ;
+        millisToAdd += 1;
+        elapsed -= 1000;
     }
-    TotalMillis += millisToAdd ;
-    MillisPrecount = elapsed ;
-    return TotalMicros ;
+    TotalMillis += millisToAdd;
+    MillisPrecount = elapsed;
+    return TotalMicros;
 }
 
 uint32_t millis()
 {
     // TODO: a nice way to remove the global TotalMillis... ? ptr ?
     // TODO: as millis is 'global', it's not so dramatic
-    micros() ;
-    return TotalMillis ;
+    micros();
+    return TotalMillis;
 }
