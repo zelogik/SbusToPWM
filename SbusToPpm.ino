@@ -290,36 +290,6 @@ void enterFailsafe()
 }
 
 
-// void sortToCopy( uint16_t *pulsePtr )
-// {
-//     static uint16_t CopyPulseTimes[8] ;
-//     static uint8_t CopyChannelNumbers[8] ;
-//     uint8_t i ;
-//     uint8_t j ;
-//     uint8_t k ;
-//     uint16_t m ;
-
-//     for ( i = 0 ; i < 4 ; i += 1 )
-//     {
-//         CopyPulseTimes[i] = pulsePtr[i] ;
-//     }
-//     for ( i = 0 ; i < 4 ; i += 1 )
-//     {
-//         m = CopyPulseTimes[0] ;
-//         k = 0 ;
-//         for ( j = 1 ; j < 4 ; j += 1 )
-//         {
-//             if ( CopyPulseTimes[j] < m )						// If this one is shorter
-//             {
-//                 m = CopyPulseTimes[i] ;							// Note value
-//                 k = j ;											// Note index
-//             }
-//         }
-//         CopyChannelNumbers[i] = k ;
-//         CopyPulseTimes[k] = 0xFFFF ;
-//     }
-// }
-
 static uint8_t processSBUSframe()
 {
     uint8_t inputbitsavailable = 0 ;
@@ -612,48 +582,6 @@ static void initUart()
     // Internal State Variable
      State = IDLE ;
 }
-
-// void init()
-// {
-//     uint8_t i ;
-//     uint8_t j ;
-//   // Timer1
-//     TCCR1A = 0x00 ;    //Init.
-//     TCCR1B = 0xC1 ;    // I/p noise cancel, rising edge, Clock/1
-//     TIFR1 = (1 << OCF1A) ;
-//     TIMSK1 |= ( 1<< OCIE1A ) ;
-
-//     initUart() ;
-//     readFailsafe() ;
-//     j = 0 ;
-//     for ( i = 0 ; i < NUMBER_CHANNELS ; i += 1 )
-//     {
-//         uint16_t x ;
-//         x = FailsafeTimes[i] ;
-//         if ( ( x < 800 ) || ( x > 2200 ) )
-//         {
-//             x = 1500 ;
-//             FailsafeTimes[i] = x ;
-//             j = 1 ;
-//         }
-//     }
-//     if ( j )
-//     {
-//         writeFailsafe() ;	// Need to update them
-//     }
-//     DDRC &= ~0x30 ;
-//     PORTC |= 0x30 ;	// AD4/5 digital input with pullup
-
-// #ifdef DEBUG
-//     DDRC |= 0x20 ;
-//     PORTC &= ~0x20 ;
-// #endif
-
-//     DDRD &= ~0x02 ;
-//     PORTD |= 0x02 ;
-
-//     sei();
-// }
 
 
 void checkSwitch()
