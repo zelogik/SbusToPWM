@@ -6,7 +6,7 @@
 //#define SERIAL_MODE_NP57600
 // #define SERIAL_MODE_EP100K
 
-#define	DEBUG   0
+//#define	DEBUG	1
 
 // Hardware pin mapping
 #define DDR_IO2			DDRD
@@ -149,69 +149,60 @@ void set_outputs()
 // Times for 57600 baud
 #if F_CPU == 20000000L   // 20MHz clock 
 //  #define TICKS2COUNT         348  // Ticks between two bits.
-    #define TICKS2WAITONE       348  // Wait one bit period.
-    #define TICKS2WAITONE_HALF  520    // Wait one and a half bit period.
-    #define DELAY150    3000
-    #define DELAY20     400
-    #define DELAY40     800
-    #define DELAY60     1200
-    #define TIME_LONG   50000
-    #define PULSE_SCALE 20
-    #define LASTRCV_TIMEOUT 10000
-    #define INTERRUPT_EXEC_CYCL   112      // Cycles to execute interrupt routines from interrupt.
-    #define INTERRUPT_EARLY_BIAS  40       // Cycles to allow of other interrupts.
-
-
-#elif F_CPU == 16000000L  // 16MHz clock
+  #define TICKS2WAITONE       348  // Wait one bit period.
+  #define TICKS2WAITONE_HALF  520    // Wait one and a half bit period.
+#elif F_CPU == 16000000L  // 16MHz clock                                                  
 //  #define TICKS2COUNT57         278  // Ticks between two bits.
-    #define TICKS2WAITONE57       277  // Wait one bit period.
-    #define TICKS2WAITONE_HALF57  415    // Wait one and a half bit period.
+  #define TICKS2WAITONE57       277  // Wait one bit period.
+  #define TICKS2WAITONE_HALF57  415    // Wait one and a half bit period.
 //  #define TICKS2COUNT100         160  // Ticks between two bits.
-    #define TICKS2WAITONE100       160  // Wait one bit period.
-    #define TICKS2WAITONE_HALF100  240  // Wait one and a half bit period.
-    #define DELAY150    2400
-    #define DELAY20     320
-    #define DELAY40     640
-    #define DELAY60     960
-    #define TIME_LONG   40000
-    #define PULSE_SCALE 16
-    #define LASTRCV_TIMEOUT 8000
-    #define ELAPSED 4
-    #define INTERRUPT_EXEC_CYCL   100 //90       // Cycles to execute interrupt routines from interrupt.
-    #define INTERRUPT_EARLY_BIAS  32       // Cycles to allow of other interrupts.
-  #if DEBUG == 1
-    #define  UBRR0L 16	// For 57600 baud, use 9 for 100000 baud
-  #else
-    #define    UBRR0L 9		// For 100000 baud
-  #endif
+  #define TICKS2WAITONE100       160  // Wait one bit period.
+  #define TICKS2WAITONE_HALF100  240  // Wait one and a half bit period.
 #elif F_CPU == 8000000L   // 8MHz clock
-  // Assumes a 8MHz clock
+  // Assumes a 8MHz clock                                                   
 //  #define TICKS2COUNT         139  // Ticks between two bits.
-    #define TICKS2WAITONE       139  // Wait one bit period.
-    #define TICKS2WAITONE_HALF  208    // Wait one and a half bit period.
-    #define DELAY150    1200
-    #define DELAY20     160
-    #define DELAY40     320
-    #define DELAY60     480
-    #define TIME_LONG   20000
-    #define PULSE_SCALE 8
-    #define LASTRCV_TIMEOUT 4000
-    #define ELAPSED 3
-    #define INTERRUPT_EXEC_CYCL   45       // Cycles to execute interrupt routines from interrupt.
-    #define INTERRUPT_EARLY_BIAS  16       // Cycles to allow of other interrupts.
-  #if DEBUG == 1
-    #define  UBRR0L 8	// For 57600 baud, use 9 for 100000 baud
-  #else
-    #define    UBRR0L 4		// For 100000 baud
-  #endif
+  #define TICKS2WAITONE       139  // Wait one bit period.
+  #define TICKS2WAITONE_HALF  208    // Wait one and a half bit period.
+#else
+  #error Unsupported clock speed
+#endif
+
+#if F_CPU == 16000000L  // 16MHz clock                                                  
+    #define DELAY150		2400
+    #define DELAY20			 320
+    #define DELAY40			 640
+    #define DELAY60			 960
+    #define TIME_LONG	 40000
+    #define PULSE_SCALE		16
+#elif F_CPU == 8000000L   // 8MHz clock
+    #define DELAY150		1200
+    #define DELAY20			 160
+    #define DELAY40			 320
+    #define DELAY60			 480
+    #define TIME_LONG	 20000
+    #define PULSE_SCALE		 8
+#endif		
+
+#if F_CPU == 20000000L     // 20MHz clock                                                  
+  #define INTERRUPT_EXEC_CYCL   112      // Cycles to execute interrupt routines from interrupt.
+  #define INTERRUPT_EARLY_BIAS  40       // Cycles to allow of other interrupts.
+
+#elif F_CPU == 16000000L   // 16MHz clock                                                  
+  #define INTERRUPT_EXEC_CYCL   100 //90       // Cycles to execute interrupt routines from interrupt.
+  #define INTERRUPT_EARLY_BIAS  32       // Cycles to allow of other interrupts.
+
+#elif F_CPU == 8000000L    // 8MHz clock                                                   
+  #define INTERRUPT_EXEC_CYCL   45       // Cycles to execute interrupt routines from interrupt.
+  #define INTERRUPT_EARLY_BIAS  16       // Cycles to allow of other interrupts.
+
 #else
   #error Unsupported clock speed
 #endif
 
 
-// #define TRXDDR  DDRD
-// #define TRXPORT PORTD
-// #define TRXPIN  PIND
+#define TRXDDR  DDRD
+#define TRXPORT PORTD
+#define TRXPIN  PIND
 
 
 #define ENABLE_TIMER_INTERRUPT( )       ( TIMSK1 |= ( 1<< OCIE1A ) )
@@ -428,10 +419,14 @@ void setup()	// run once, when the sketch starts
     TIFR1 = (1 << OCF1A) ;
     TIMSK1 |= ( 1<< OCIE1A ) ;
 
+    // Uart/sbus input
+    DDRD &= ~0x02 ;
+    PORTD |= 0x02 ;
+
     initUart() ;
     readFailsafe() ;
 
-    // Set Failsafe & invert output Pin
+    // invert output Pin & OnlyEight switch
     DDRC &= ~0x30 ;
     PORTC |= 0x30 ;	// AD4/5 digital input with pullup
 
@@ -444,10 +439,6 @@ void setup()	// run once, when the sketch starts
     {
         ChannelSwap = 1 ;
     }
-    // OnlyEight Pin
-    DDRD &= ~0x02 ;
-    PORTD |= 0x02 ;
-
     if ( ( PIND & 0x02 ) == 0 )		// Link on PD1
     {
         EightOnly = 1 ;
@@ -673,15 +664,22 @@ void writeFailsafe()
 // TODO: make cpu agnostic !
 void setSerialMode( uint8_t mode )
 {
-#ifdef UBRROL
-    UBRR0L = UBRROL ;		// For 57600 baud, use 9 for 100000 baud
-#endif
     if ( mode == 0 )		// 57600
     {
+#if F_CPU == 16000000L  // 16MHz clock                                                  
+        UBRR0L = 16 ;		// For 57600 baud, use 9 for 100000 baud
+#elif F_CPU == 8000000L   // 8MHz clock
+        UBRR0L = 8 ;		// For 57600 baud, use 9 for 100000 baud
+#endif		
         UCSR0C = (1<<UCSZ00) | (1<<UCSZ01 ) ;
     }
     else
     {
+#if F_CPU == 16000000L  // 16MHz clock                                                  
+        UBRR0L = 9 ;		// For 100000 baud
+#elif F_CPU == 8000000L   // 8MHz clock
+        UBRR0L = 4 ;		// For 100000 baud
+#endif
         UCSR0C = (1<<UCSZ00) | (1<<UCSZ01 ) | (1<<UPM01) ;
         UCSR0B &= ~TXEN0 ;
     }
@@ -692,7 +690,7 @@ static void initUart()
 {
     // TODO: make CPU agnostic
     UBRR0H = 0 ;
-    setSerialMode( DEBUG ) ;
+    setSerialMode( 1 ) ;
     UCSR0A = 0 ;
     PORTD |= 3 ;		// Enable pullup
 
@@ -819,7 +817,11 @@ int main()	// run over and over again
         x = TCNT1 ;
         sei() ;
 
-        if ( ( x - Lastrcv ) > LASTRCV_TIMEOUT )
+#if F_CPU == 16000000L  // 16MHz clock
+        if ( ( x - Lastrcv ) > 8000 )
+#elif F_CPU == 8000000L   // 8MHz clock
+        if ( ( x - Lastrcv ) > 4000 )
+#endif
         // TODO: to many nested if ...
         {
             if ( Sindex )
@@ -933,8 +935,7 @@ int main()	// run over and over again
             if ( ( millis() - LastSbusReceived ) > 100 )
             {
                 LastSbusReceived = millis() ;
-                // TODO: only if DEBUG 1 ?
-                setSerialMode( !SerialMode ) ;
+                setSerialMode( !SerialMode ) ;				
             }
         }
 
@@ -969,11 +970,13 @@ uint32_t micros()
 
     elapsed = time - lastTimerValue ;
     elapsed += Correction ;
-// Check of 20MHz ?
-#ifdef ELAPSED
+#if F_CPU == 16000000L                  // 16MHz clock
     Correction = elapsed & 0x0F ;
     elapsed >>= 4 ;
-#endif
+#elif F_CPU == 8000000L                 // 8MHz clock
+    Correction = elapsed & 0x07 ;
+    elapsed >>= 3 ;
+#endif		
     
     uint32_t ltime = TotalMicros ;
     ltime += elapsed ;
@@ -984,15 +987,16 @@ uint32_t micros()
     
     elapsed += MillisPrecount;
     millisToAdd = 0 ;
-
+#if F_CPU == 8000000L                   // 8MHz clock
     if ( elapsed  > 3999 )
     {
-        // TODO: Understand why 8Mhz need that ...
-#if F_CPU == 8000000L                   // 8MHz clock
         millisToAdd = 4 ;
-#else
+        elapsed -= 4000 ;
+    }
+#endif		
+    if ( elapsed  > 3999 )
+    {
         millisToAdd += 4 ;
-#endif
         elapsed -= 4000 ;
     }
     else if ( elapsed  > 2999 )
