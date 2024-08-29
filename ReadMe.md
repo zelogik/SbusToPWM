@@ -1,3 +1,12 @@
+TODO:
+- make a 'tiny/nano' pcb for attiny1616 or attiny328
+ie: check for the more voltage drop tolerant avr
+
+- Change that README, as is not for a 'generic' arduino but more for a custom PCB.
+
+- make 4, 8, 16 channels SBUS/PPM decoder
+
+
 Arduino used as SBUS to 16-channels PPM decoder
 
 Analog input A4 is used to set the failsafe times to the current received pulses.
@@ -13,6 +22,10 @@ to 8 channel only mode, but with a servo update rate of 9mS.
 
 Connections:
 <img src="Docs/Wiring.jpg"/>
+
+
+Original 'amazing' code from:
+https://github.com/MikeBland/SbusToPWM
 
 
 ## License and Disclaimer
