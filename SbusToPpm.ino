@@ -1,5 +1,5 @@
 // ServoDecodeTest
-
+#include <stdio.h>
 #include <avr/eeprom.h>
 
 // SERIAL_MODE options NP57600 and EP100K
@@ -85,6 +85,15 @@
 #define BIT_ADC5		5
 
 #define NUMBER_CHANNELS	16
+
+enum IndexPulses {
+    ONE_TO_FOUR,
+    FIVE_TO_EIGHT,
+    NINE_TO_TWELVE,
+    THIRTEEN_TO_SIXTEEN,
+    END_PULSES,
+    CURRENT_PULSE
+};
 
 uint8_t *Ports[NUMBER_CHANNELS] = {
     (uint8_t *)&PORT_IO2,
@@ -218,11 +227,11 @@ void set_outputs()
 #define DISABLE_TIMER_INTERRUPT( )      ( TIMSK1 &= ~( 1<< OCIE1A ) )
 #define CLEAR_TIMER_INTERRUPT( )        ( TIFR1 = (1 << OCF1A) )
 
-#define	ONE_TO_FOUR			0
-#define	FIVE_TO_EIGHT		1
-#define	NINE_TO_TWELVE	2
-#define	THIRTEEN_TO_SIXTEEN	3
-#define	END_PULSES			4
+// #define	ONE_TO_FOUR			0
+// #define	FIVE_TO_EIGHT		1
+// #define	NINE_TO_TWELVE	2
+// #define	THIRTEEN_TO_SIXTEEN	3
+// #define	END_PULSES			4
 
 // UART's state.
 #define   IDLE				0       // Idle state, both transmit and receive possible.
@@ -270,6 +279,11 @@ volatile uint16_t Lastrcv = 0 ;
 uint32_t LastSbusReceived ;
 uint8_t SbusHasBeenReceived ;
 
+
+// const uint8_t NumBytes = 5;
+
+// index_bytes currentPulse;
+
 // uint16_t TicksWaitOne ;
 // uint16_t TicksWaitOneHalf ;
 // uint8_t RxIsOne ;
@@ -291,7 +305,7 @@ void checkInput()
             x = TCNT1 ;
             sei() ;
             Lastrcv = x ;
-               Sindex += 1 ;
+            Sindex += 1 ;
             if (Sindex > 27)
             {
                 Sindex = 27 ;
@@ -461,137 +475,73 @@ void setPulseTimes( uint8_t Five2_8 )
 {
     uint16_t *pulsePtr = PulseTimes ;
     uint16_t times[4] ;				// The 4 pulse lengths to process
-    uint8_t i ;
-    uint8_t j ;
+    // uint8_t i ;
+    uint8_t j = 0 ;
     uint8_t k ;
     uint16_t m ;
      
-    k = 0 ;								// Offset into Ports and Bits
-    if ( Five2_8 == FIVE_TO_EIGHT )
-    {
-        pulsePtr += 4 ;			// Move on to second 4 pulses
-        k = 4 ;
-    }
+    // k = 0 ;								// Offset into Ports and Bits
 
-    if ( Five2_8 == NINE_TO_TWELVE )
-    {
-        pulsePtr += 8 ;			// Move on to second 4 pulses
-        k = 8 ;
-    }
-
-    if ( Five2_8 == THIRTEEN_TO_SIXTEEN )
-    {
-        pulsePtr += 12 ;			// Move on to second 4 pulses
-        k = 12 ;
-    }
+    uint8_t move_on = Five2_8 * 4;
+    pulsePtr += move_on;
+    k = move_on;
 
     if ( ChannelSwap )		// Link on AD5
     {
         // swap chanels 1-8 and 9-16
-        if ( k >= 8 )
-        {
-            k -= 8 ;
-        }
-        else
-        {
-            k += 8 ;
-        }
+        ( k >= 8 )? k -= 8 :  k += 8;
     }
 
-
-    for ( i = 0 ; i < 4 ; i += 1 )
+    for (uint8_t i = 0 ; i < 4 ; i += 1 )
     {
         times[i] = pulsePtr[i] ;                   // Make local copy of pulses to process
     }
-    
-    m = times[0] ;                                  // First pulse
-    j = 0 ;
 
-    for ( i = 1 ; i < 4 ; i += 1 )                  // Find shortest pulse
+    uint16_t time;
+    for (uint8_t i = 0; i < 4; i++)
     {
-        if ( times[i] < m )                         // If this one is shorter
+        checkInput();
+        m = times[0] ;                                  // First pulse
+
+        for (uint8_t i = 1 ; i < 4 ; i += 1 )                  // Find shortest pulse
         {
-            m = times[i] ;                          // Note value
-            j = i ;                                 // Note index
+            if ( times[i] < m )                         // If this one is shorter
+            {
+                m = times[i] ;                          // Note value
+                j = i ;                                 // Note index
+            }
+        }
+
+        times[j] = 0xFFFF ;                             // Make local copy very large
+        j += k ;                                        // Add on offset
+        Pulses[i+4].port = Pulses[i].port = Ports[j] ;    // Set the port for this pulse
+        Pulses[i+4].bit = Pulses[i].bit = Bits[j] ;       // Set the bit for this pulse
+        Pulses[i].start = 1 ;                           // Mark the start
+        Pulses[i+4].start = 0 ;                           // Mark the end
+
+        if (i == 0)
+        {
+            cli();
+            time = TCNT1 + DELAY150;              // Start the pulses in 150 uS
+            sei();                                         // Gives time for this code to finish
+        }
+
+        if ( i < 3)
+        {
+            Pulses[i].nextTime = time + ( DELAY20 * (i + 1));           // Next pulse starts in 20 uS
+            Pulses[i+3].nextTime = time + m * PULSE_SCALE ;   // This pulse ends at this time
+        }
+        // Last Pulse wave
+        else
+        {
+            Pulses[i+4].nextTime = time + DELAY20 * 125 ;
+            Pulses[i+3].nextTime = time + m * PULSE_SCALE ;   // This pulse ends at this time
+            cli() ;
+            OCR1A = time ;				// Set for first interrupt
+            sei() ;
         }
     }
-
-    times[j] = 0xFFFF ;                             // Make local copy very large
-    j += k ;                                        // Add on offset
-    Pulses[4].port = Pulses[0].port = Ports[j] ;    // Set the port for this pulse
-    Pulses[4].bit = Pulses[0].bit = Bits[j] ;       // Set the bit for this pulse
-    Pulses[0].start = 1 ;                           // Mark the start
-    Pulses[4].start = 0 ;                           // Mark the end
-    cli() ;
-    uint16_t time = TCNT1 + DELAY150 ;              // Start the pulses in 150 uS
-    sei() ;                                         // Gives time for this code to finish
-    Pulses[0].nextTime = time + DELAY20 ;           // Next pulse starts in 20 uS
-    Pulses[3].nextTime = time + m * PULSE_SCALE ;   // This pulse ends at this time
-    
-    checkInput() ;
-    
-    m = times[0] ;                                  // First pulse
-    j = 0 ;
-    for ( i = 1 ; i < 4 ; i += 1 )                  // Find next shortest pulse
-    {
-        if ( times[i] < m )                         // If this one is shorter
-        {
-            m = times[i] ;                          // Note value
-            j = i ;                                 // Note index
-        }
-    }
-    times[j] = 0xFFFF ;                             // Make local copy very large
-    j += k ;                                        // Add on offset
-    Pulses[5].port = Pulses[1].port = Ports[j] ;    // Set the port for this pulse
-    Pulses[5].bit = Pulses[1].bit = Bits[j] ;       // Set the bit for this pulse
-    Pulses[1].start = 1 ;                           // Mark the start
-    Pulses[5].start = 0 ;                           // Mark the end
-    Pulses[1].nextTime = time + DELAY40 ;           // Next pulse starts in another 20 uS
-    Pulses[4].nextTime = time + DELAY20 + m * PULSE_SCALE ;// This pulse ends at this time
-                                                  
-    checkInput() ;
-    
-    m = times[0] ;                                
-    j = 0 ;
-    for ( i = 1 ; i < 4 ; i += 1 )
-    {
-        if ( times[i] < m )
-        {
-            m = times[i] ;
-            j = i ;
-        }
-    }
-    times[j] = 0xFFFF ;
-    j += k ;
-    Pulses[6].port = Pulses[2].port = Ports[j] ;
-    Pulses[6].bit = Pulses[2].bit = Bits[j] ;
-    Pulses[2].start = 1 ;
-    Pulses[6].start = 0 ;
-    Pulses[2].nextTime = time + DELAY60 ;
-    Pulses[5].nextTime = time + DELAY40 + m * PULSE_SCALE ;
-
-    checkInput() ;
-
-    m = times[0] ;
-    j = 0 ;
-    for ( i = 1 ; i < 4 ; i += 1 )
-    {
-        if ( times[i] < m )
-        {
-            m = times[i] ;
-            j = i ;
-        }
-    }
-    j += k ;
-    Pulses[7].port = Pulses[3].port = Ports[j] ;
-    Pulses[7].bit = Pulses[3].bit = Bits[j] ;
-    Pulses[3].start = 1 ;
-    Pulses[7].start = 0 ;
-    Pulses[6].nextTime = time + DELAY60 + m * PULSE_SCALE ;
-    Pulses[7].nextTime = time + TIME_LONG ;			// Some time well ahead, shouldn't be used
-    cli() ;
-    OCR1A = time ;				// Set for first interrupt
-    sei() ;
+   
 }
 
 ISR(TIMER1_COMPA_vect)
@@ -779,41 +729,71 @@ void checkSwitch()
 }
 
 
+void setBytes(enum IndexPulses currentPulse)
+{
+    static uint16_t LastPulsesStartTime = 0;
+    static unsigned long Timer = 0 ;
+    static uint8_t PulsesNeeded ;
+
+    // only for first 4 pulses
+    if ( ( micros() - LastPulsesStartTime ) > 20000 )
+    {
+        LastPulsesStartTime += 20000 ;
+    }
+    // for 5 -> 16 pulses
+    if ( ( micros() - Timer ) > 3000)
+    {
+        setPulseTimes( currentPulse ) ;  // First 4 pulses
+        CLEAR_TIMER_INTERRUPT( ) ;      // Clear flag in case it is set
+        PulsesIndex = 0 ;               // Start here
+        State = PULSING ;
+        ENABLE_TIMER_INTERRUPT( ) ;     // Allow interrupt to run
+        Timer = micros() ;
+        PulsesNeeded = static_cast<IndexPulses>(currentPulse + 1) ;
+    }
+
+    // (EightOnly && ( currentPulse == FIVE_TO_EIGHT)) ?  : enum(++)
+    if (EightOnly && ( currentPulse == FIVE_TO_EIGHT))
+    {
+        return;
+    }
+
+}
+
+
 int main()	// run over and over again
 {
-    static unsigned long Timer = 0 ;
     // static uint8_t EightOnly ;
-    static uint8_t PulsesNeeded ;
     static uint16_t LastPulsesStartTime ;
 
     uint16_t x ;
     // Arduino/asr -> setup() already executed at start before the main()
-    // init() ;
-    // setup() ;
 
     enterFailsafe() ;
     LastSbusReceived = millis() - ( FailSafeTimeOut_ms + 100 ) ;    // Force failsafe at startup
 
     for(;;)
     {
-        checkInput() ;
-        checkSwitch() ;
-        checkInput() ;
+        checkInput();
+        checkSwitch();
 
-        uint16_t y = micros() ;
-        if ( ( y - LastPulsesStartTime ) > 20000 )
+        // uint8_t i = 0
+        // uint8_t *ptr_loop = &i;
+        for(uint8_t i = ONE_TO_FOUR; i < CURRENT_PULSE; i++)
         {
-            LastPulsesStartTime += 20000 ;
-            setPulseTimes( ONE_TO_FOUR ) ;  // First 4 pulses
-            CLEAR_TIMER_INTERRUPT( ) ;      // Clear flag in case it is set
-            PulsesIndex = 0 ;               // Start here
-            State = PULSING ;
-            ENABLE_TIMER_INTERRUPT( ) ;     // Allow interrupt to run
-            Timer = micros() ;
-            PulsesNeeded = FIVE_TO_EIGHT ;
+            checkInput();
+            setBytes((enum IndexPulses)i);
+            // currentPulse = static_cast<index_bytes>(currentPulse + 1);
+            if ( i == END_PULSES)
+            {
+                if ( State == IDLE )
+                    {
+                        // PulsesNeeded = 0 ;
+                        // currentPulse = ONE_TO_FOUR;
+                    } 
+            }
         }
 
-        checkInput() ;
 
         cli() ;
         x = TCNT1 ;
@@ -836,7 +816,7 @@ int main()	// run over and over again
                         {
                             if ( State == IDLE )
                             {
-                                y = micros() ;
+                                uint32_t y = micros() ;
                                 uint16_t rate = 17900 ;
                                 if ( EightOnly )
                                 {
@@ -863,65 +843,6 @@ int main()	// run over and over again
         
 
         // TODO: factorize below code... (new function OR struct/enum ?)
-        checkInput() ;
-        if ( PulsesNeeded == FIVE_TO_EIGHT )		// Second 4 pulses
-        {
-            if ( ( micros() - Timer ) > 3000 )	// Time for them
-            {
-                if ( EightOnly )
-                {
-                    PulsesNeeded = END_PULSES ;
-                }
-                else
-                {
-                    PulsesNeeded = NINE_TO_TWELVE ;
-                }
-                setPulseTimes( FIVE_TO_EIGHT ) ;	// Second 4 pulses
-                CLEAR_TIMER_INTERRUPT( ) ;				// Clear flag in case it is set
-                PulsesIndex = 0 ;									// Start here
-                State = PULSING ;
-                Timer = micros() ;
-                ENABLE_TIMER_INTERRUPT( ) ;				// Allow interrupt to run
-            }
-        }
-        checkInput() ;
-
-        if ( PulsesNeeded == NINE_TO_TWELVE )		// Second 4 pulses
-        {
-            if ( ( micros() - Timer ) > 3000 )	// Time for them
-            {
-                PulsesNeeded = THIRTEEN_TO_SIXTEEN ;
-                setPulseTimes( NINE_TO_TWELVE ) ;	// Next 4 pulses
-                CLEAR_TIMER_INTERRUPT( ) ;				// Clear flag in case it is set
-                PulsesIndex = 0 ;									// Start here
-                State = PULSING ;
-                Timer = micros() ;
-                ENABLE_TIMER_INTERRUPT( ) ;				// Allow interrupt to run
-            }
-        }
-        checkInput() ;
-    
-        if ( PulsesNeeded == THIRTEEN_TO_SIXTEEN )		// Second 4 pulses
-        {
-            if ( ( micros() - Timer ) > 3000 )	// Time for them
-            {
-                PulsesNeeded = END_PULSES ;
-                setPulseTimes( THIRTEEN_TO_SIXTEEN ) ;	// Last 4 pulses
-                CLEAR_TIMER_INTERRUPT( ) ;				// Clear flag in case it is set
-                PulsesIndex = 0 ;									// Start here
-                State = PULSING ;
-                ENABLE_TIMER_INTERRUPT( ) ;				// Allow interrupt to run
-            }
-        }
-        checkInput() ;
-
-        if ( PulsesNeeded == END_PULSES )		// Second 4 pulses
-        {
-            if ( State == IDLE )
-            {
-                PulsesNeeded = 0 ;
-            }
-        }
 
         if ( ( millis() - LastSbusReceived ) > FailSafeTimeOut_ms )
         {
