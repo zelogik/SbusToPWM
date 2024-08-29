@@ -218,20 +218,9 @@ void set_outputs()
 #endif
 
 
-// #define TRXDDR  DDRD
-// #define TRXPORT PORTD
-// #define TRXPIN  PIND
-
-
 #define ENABLE_TIMER_INTERRUPT( )       ( TIMSK1 |= ( 1<< OCIE1A ) )
 #define DISABLE_TIMER_INTERRUPT( )      ( TIMSK1 &= ~( 1<< OCIE1A ) )
 #define CLEAR_TIMER_INTERRUPT( )        ( TIFR1 = (1 << OCF1A) )
-
-// #define	ONE_TO_FOUR			0
-// #define	FIVE_TO_EIGHT		1
-// #define	NINE_TO_TWELVE	2
-// #define	THIRTEEN_TO_SIXTEEN	3
-// #define	END_PULSES			4
 
 // UART's state.
 #define   IDLE				0       // Idle state, both transmit and receive possible.
@@ -240,9 +229,6 @@ void set_outputs()
 //#define	  WAITING     3
 
 // #define FORCE_INDIRECT(ptr) __asm__ __volatile__ ("" : "=e" (ptr) : "0" (ptr))
-
-// uint32_t micros() ;
-// void setPulseTimes( uint8_t Five2_8 ) ;
 
 uint16_t FailsafeTimes[NUMBER_CHANNELS] ;
 uint16_t PulseTimes[NUMBER_CHANNELS] ;
@@ -254,9 +240,7 @@ static volatile uint8_t SwUartRXData;     //!< Storage for received bits.
 static volatile unsigned char SwUartRXBitCount; //!< RX bit counter.
 
 
-// TODO: clean all that global variables!
-// uint8_t PulsesNeeded ;
-// uint16_t LastPulsesStartTime ;
+// TODO: clean all that global variables! (almost done)
 const uint16_t FailSafeTimeOut_ms = 500 ;
 uint8_t ChannelSwap ;
 uint8_t EightOnly ;
@@ -274,19 +258,10 @@ uint8_t PulsesIndex = 0 ;
 uint8_t Sbuffer[28] = {0} ;
 uint8_t Sindex = 0 ;
 volatile uint16_t Lastrcv = 0 ;
-// unsigned long Timer = 0 ;
 
 uint32_t LastSbusReceived ;
 uint8_t SbusHasBeenReceived ;
 
-
-// const uint8_t NumBytes = 5;
-
-// index_bytes currentPulse;
-
-// uint16_t TicksWaitOne ;
-// uint16_t TicksWaitOneHalf ;
-// uint8_t RxIsOne ;
 uint8_t SerialMode ;
 
 // Copy the failsafe values into the pulse array
@@ -417,9 +392,7 @@ void setup()	// run once, when the sketch starts
     PORTD &= 0x03 ;	// Outputs low
 
     set_outputs() ;
-    // uint8_t i ;
     uint8_t j = 0;
-    // j = 0 ;
     for ( uint8_t i = 0 ; i < NUMBER_CHANNELS ; i += 1 )
     {
         uint16_t x ;
@@ -475,13 +448,10 @@ void setPulseTimes( uint8_t Five2_8 )
 {
     uint16_t *pulsePtr = PulseTimes ;
     uint16_t times[4] ;				// The 4 pulse lengths to process
-    // uint8_t i ;
     uint8_t j = 0 ;
     uint8_t k ;
     uint16_t m ;
      
-    // k = 0 ;								// Offset into Ports and Bits
-
     uint8_t move_on = Five2_8 * 4;
     pulsePtr += move_on;
     k = move_on;
@@ -867,11 +837,7 @@ int main()	// run over and over again
 // replacement millis() and micros()
 // These work polled, no interrupts
 // micros() MUST be called at least once every 4 milliseconds
-// uint16_t MillisPrecount ;
-// uint16_t lastTimerValue ;
-// uint32_t TotalMicros ;
 uint32_t TotalMillis ;
-// uint8_t Correction ;
 
 uint32_t micros()
 {
