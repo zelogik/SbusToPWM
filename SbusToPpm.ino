@@ -8,6 +8,18 @@
 
 #define	DEBUG   0
 
+#define NUMBER_CHANNELS	16
+
+enum IndexPulses {
+    ONE_TO_FOUR,
+    FIVE_TO_EIGHT,
+    NINE_TO_TWELVE,
+    THIRTEEN_TO_SIXTEEN,
+    END_PULSES,
+    CURRENT_PULSE
+};
+
+// TODO: make define more 'Dynamic'
 // Hardware pin mapping
 #define DDR_IO2			DDRD
 #define PORT_IO2		PORTD
@@ -83,17 +95,6 @@
 #define PORT_ADC5		PORTC
 #define PIN_ADC5		PINC
 #define BIT_ADC5		5
-
-#define NUMBER_CHANNELS	16
-
-enum IndexPulses {
-    ONE_TO_FOUR,
-    FIVE_TO_EIGHT,
-    NINE_TO_TWELVE,
-    THIRTEEN_TO_SIXTEEN,
-    END_PULSES,
-    CURRENT_PULSE
-};
 
 uint8_t *Ports[NUMBER_CHANNELS] = {
     (uint8_t *)&PORT_IO2,
@@ -208,7 +209,7 @@ void set_outputs()
   #error Unsupported clock speed
 #endif
 
-
+// TODO: set for atmega328, make for other avr
 #define ENABLE_TIMER_INTERRUPT( )       ( TIMSK1 |= ( 1<< OCIE1A ) )
 #define DISABLE_TIMER_INTERRUPT( )      ( TIMSK1 &= ~( 1<< OCIE1A ) )
 #define CLEAR_TIMER_INTERRUPT( )        ( TIFR1 = (1 << OCF1A) )
@@ -233,8 +234,7 @@ static volatile unsigned char SwUartRXBitCount; //!< RX bit counter.
 
 // TODO: clean all that global variables! (almost done)
 const uint16_t FailSafeTimeOut_ms = 500;
-uint8_t ChannelSwap;
-uint8_t EightOnly;
+uint8_t ChannelSwap, EightOnly;
 
 struct t_pulses
 {
@@ -244,19 +244,14 @@ struct t_pulses
     uint16_t nextTime;
 } Pulses[8];
 
-uint8_t PulsesIndex = 0;
-
-uint8_t Sbuffer[28] = {0};
-uint8_t Sindex = 0;
+uint8_t PulsesIndex = 0, Sbuffer[28] = {0}, Sindex = 0;
 volatile uint16_t Lastrcv = 0;
 
 uint32_t LastSbusReceived;
-uint8_t SbusHasBeenReceived;
+uint8_t SbusHasBeenReceived, SerialMode;
 
-uint8_t SerialMode;
 
 // Copy the failsafe values into the pulse array
-
 void checkInput()
 {
     uint16_t x;
@@ -282,8 +277,7 @@ void checkInput()
 
 void enterFailsafe()
 {
-    uint8_t i;
-    for ( i = 0; i < NUMBER_CHANNELS; i += 1 )
+    for (uint8_t i = 0; i < NUMBER_CHANNELS; i += 1 )
     {
         PulseTimes[i] = FailsafeTimes[i];
     }
@@ -292,10 +286,9 @@ void enterFailsafe()
 
 static uint8_t processSBUSframe()
 {
-    uint8_t inputbitsavailable = 0;
-    uint8_t i;
+    uint8_t *sbus = Sbuffer, inputbitsavailable = 0;
     uint32_t inputbits = 0;
-    uint8_t *sbus = Sbuffer;
+
     if ( Sindex < 25 )
     {
         return 0;
@@ -320,10 +313,10 @@ static uint8_t processSBUSframe()
     PORTC ^= 0x20;
 #endif
 
-    LastSbusReceived = millis();
+    LastSbusReceived = millis_();
     SbusHasBeenReceived = 1;
 
-    for ( i = 0; i < 16; i += 1 )
+    for (uint8_t i = 0; i < 16; i += 1 )
     {
         uint16_t temp;
 
@@ -407,13 +400,11 @@ void setup()	// run once, when the sketch starts
 
 void setPulseTimes( uint8_t Five2_8 )
 {
-    uint16_t *pulsePtr = PulseTimes;
-    uint16_t times[4];				// The 4 pulse lengths to process
-    uint8_t j = 0;
-    uint8_t k;
+    uint16_t *pulsePtr = PulseTimes, times[4];
+    // uint16_t times[4];				// The 4 pulse lengths to process
+    uint8_t j = 0, k, move_on = Five2_8 * 4;
     uint16_t m;
-     
-    uint8_t move_on = Five2_8 * 4;
+
     pulsePtr += move_on;
     k = move_on;
 
@@ -479,8 +470,7 @@ ISR(TIMER1_COMPA_vect)
 {
     if ( State == PULSING )
     {
-        uint8_t *port;
-        uint8_t bit;
+        uint8_t *port, bit;
         uint16_t index = PulsesIndex;
         if ( index < 8 )
         {
@@ -588,7 +578,7 @@ void checkSwitch()
 {
     static uint32_t LastSwitchTime;
     static uint8_t LastSwitchState;
-    if ( millis() - LastSwitchTime < 500 )
+    if ( millis_() - LastSwitchTime < 500 )
     {
         return;
     }
@@ -597,7 +587,7 @@ void checkSwitch()
         if ( LastSwitchState == 0 )
         {
             // Just pressed
-            LastSwitchTime = millis();
+            LastSwitchTime = millis_();
             LastSwitchState = 1;
             uint8_t i;
             for ( i = 0; i < NUMBER_CHANNELS; i += 1 )
@@ -612,7 +602,7 @@ void checkSwitch()
         if ( LastSwitchState )
         {
             LastSwitchState = 0;
-            LastSwitchTime = millis();
+            LastSwitchTime = millis_();
         }
     }
 }
@@ -621,23 +611,23 @@ void checkSwitch()
 void setBytes(enum IndexPulses currentPulse)
 {
     static uint16_t LastPulsesStartTime = 0;
-    static unsigned long Timer = 0;
+    static uint32_t Timer = 0;
     static uint8_t PulsesNeeded;
 
     // only for first 4 pulses
-    if ( ( micros() - LastPulsesStartTime ) > 20000 )
+    if ( ( micro_() - LastPulsesStartTime ) > 20000 )
     {
         LastPulsesStartTime += 20000;
     }
     // for 5 -> 16 pulses
-    if ( ( micros() - Timer ) > 3000)
+    if ( ( micro_() - Timer ) > 3000)
     {
         setPulseTimes( currentPulse );  // First 4 pulses
         CLEAR_TIMER_INTERRUPT( );      // Clear flag in case it is set
         PulsesIndex = 0;               // Start here
         State = PULSING;
         ENABLE_TIMER_INTERRUPT( );     // Allow interrupt to run
-        Timer = micros();
+        Timer = micro_();
         PulsesNeeded = static_cast<IndexPulses>(currentPulse + 1);
     }
 
@@ -650,7 +640,7 @@ void setBytes(enum IndexPulses currentPulse)
 }
 
 
-int main()	// run over and over again
+void loop()	// run over and over again
 {
     // static uint8_t EightOnly;
     static uint16_t LastPulsesStartTime;
@@ -659,7 +649,7 @@ int main()	// run over and over again
     // Arduino/asr -> setup() already executed at start before the main()
 
     enterFailsafe();
-    LastSbusReceived = millis() - ( FailSafeTimeOut_ms + 100 );    // Force failsafe at startup
+    LastSbusReceived = millis_() - ( FailSafeTimeOut_ms + 100 );    // Force failsafe at startup
 
     // TODO: Remove that 'nasty' but tricky for loop
     // TODO: enterFailsafe() could be on setup() ?
@@ -707,7 +697,7 @@ int main()	// run over and over again
                         {
                             if ( State == IDLE )
                             {
-                                uint32_t y = micros();
+                                uint32_t y = micro_();
                                 uint16_t rate = 17900;
                                 if ( EightOnly )
                                 {
@@ -735,16 +725,16 @@ int main()	// run over and over again
 
         // TODO: factorize below code... (new function OR struct/enum ?)
 
-        if ( ( millis() - LastSbusReceived ) > FailSafeTimeOut_ms )
+        if ( ( millis_() - LastSbusReceived ) > FailSafeTimeOut_ms )
         {
             enterFailsafe();
         }
         
         if ( SbusHasBeenReceived == 0 )
         {
-            if ( ( millis() - LastSbusReceived ) > 100 )
+            if ( ( millis_() - LastSbusReceived ) > 100 )
             {
-                LastSbusReceived = millis();
+                LastSbusReceived = millis_();
                 // TODO: only if DEBUG 1 ?
                 setSerialMode( !SerialMode );
             }
@@ -755,12 +745,12 @@ int main()	// run over and over again
     }
 } 
 
-// replacement millis() and micros()
+// replacement millis_() and micro_()
 // These work polled, no interrupts
 // micros() MUST be called at least once every 4 milliseconds
 uint32_t TotalMillis;
 
-uint32_t micros()
+uint32_t micro_()
 {
 
     static uint16_t MillisPrecount;
@@ -823,10 +813,11 @@ uint32_t micros()
     return TotalMicros;
 }
 
-uint32_t millis()
+uint32_t millis_()
 {
     // TODO: a nice way to remove the global TotalMillis... ? ptr ?
     // TODO: as millis is 'global', it's not so dramatic
-    micros();
+    micro_();
     return TotalMillis;
 }
+
