@@ -1,3 +1,9 @@
+
+/!\
+
+WIP !!! must not work now...
+
+
 TODO:
 - make a 'tiny/nano' pcb for attiny1616 or attiny328
 ie: check for the more voltage drop tolerant avr
