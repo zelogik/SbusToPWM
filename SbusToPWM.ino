@@ -1,5 +1,14 @@
 const int ledPin = LED_BUILTIN;  // the number of the LED pin
 
+// TODO:
+// - add channel number D8 or D16
+// ie: so could be digital or analogic
+// - add time based set output
+// - add time based failsafe
+// - add failsafe logic
+// - TEST with hardware :D
+// - 
+
 #define F_CPU 16000000UL  // Define CPU frequency as 16 MHz (typical for Arduino Uno)
 #define PRESCALER 8        // Assuming Timer1 is configured with a prescaler of 8
 #define DEBUG 1
