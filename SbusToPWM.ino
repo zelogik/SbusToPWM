@@ -33,7 +33,7 @@ private:
 
 MyMillis millis_;
 
-struct t_rx_pulse
+struct t_rx_sbus
 {
     uint8_t Sbuffer[28];
     uint8_t Sindex = 0;	
@@ -49,6 +49,46 @@ struct t_state
 } volatile state;
 
 uint16_t pulseTimes[17] = {1500}; // set default PWM
+
+volatile uint16_t pseudo16bitCounter = 0;
+
+struct PinConfig {
+    volatile uint8_t *port;  // Pointer to the port register (PORTB, PORTD, etc.)
+    uint8_t pin;             // Pin number (0-7)
+};
+
+PinConfig outputs[16] = {
+    { &PORTD, 2 },
+    { &PORTD, 3 },
+    { &PORTD, 4 },
+    { &PORTD, 5 },
+    { &PORTB, 0 },
+    { &PORTB, 1 },
+    { &PORTB, 2 },
+    { &PORTB, 3 },
+    { &PORTC, 0 },
+    { &PORTC, 1 },
+    { &PORTC, 2 },
+    { &PORTC, 3 },
+    { &PORTD, 6 },
+    { &PORTD, 7 },
+    { &PORTB, 4 },
+    { &PORTB, 5 }
+};
+
+volatile uint32_t millis_inc = 0;
+ISR(TIMER0_COMPA_vect)
+{
+  OCR0A += 250; // Advance The COMPA Register
+  millis_inc++;
+}
+
+volatile uint8_t tick_ppm = 0;
+ISR(TIMER2_COMPA_vect)
+{
+  OCR2A += 138; // Advance The COMPA Register
+
+}
 
 
 ISR(USART0_RX_vect) {
@@ -74,9 +114,20 @@ ISR(USART0_RX_vect) {
             }
         }
     }
+}
 
-    // Here you can add additional code to process the receivedChar
-    // For example, you could store it in a buffer, echo it back, etc.
+
+void bubbleSort(uint8_t arr[], uint8_t n) {
+    for (uint8_t i = 0; i < n-1; i++) {
+        for (uint8_t j = 0; j < n-i-1; j++) {
+            if (arr[j] > arr[j+1]) {
+                // Swap arr[j] and arr[j+1]
+                uint8_t temp = arr[j];
+                arr[j] = arr[j+1];
+                arr[j+1] = temp;
+            }
+        }
+    }
 }
 
 
@@ -85,8 +136,25 @@ void setup() {
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
 #ifdef DEBUG
-  // Serial.begin(57600);
+  Serial.begin(57600);
 #endif
+
+    // Timer0 : millis
+    TCCR0A = 0;  // Normal mode
+    TCCR0B |= (1 << CS01) | (1 << CS00);  // Set prescaler to 64
+
+    OCR0A = 250;
+    // TIMSK0 |= 0x02;
+    TIMSK0 |= (1 << TOIE0);  // Enable Timer0 overflow interrupt
+
+
+    // Timer2 : ppm tick
+    TCCR2A = 0;  // Normal mode
+    TCCR2B |= (1 << CS22);  // Set prescaler to 64
+    OCR2A = 138;        // Timer Compare2A Register
+    TIMSK2 |= (1 << TOIE2); //B00000010;  // Enable Timer COMPA Interrupt
+
+
     // Timer1
     // Clear Timer1 Control Registers
     TCCR1A = 0x00;    //Init.
@@ -111,10 +179,13 @@ void setup() {
     sei();
 
 
+    // TODO: set pin swap AND speed ana/dig
+
 }
 
 // the loop function runs over and over again forever
 void loop() {
+    static uint32_t outputLoopTimeout = millis_inc;
     // ie: make a "mean" operation with two value
     // int mean = (a & b) + ((a ^ b) >> 1);
 
@@ -122,17 +193,74 @@ void loop() {
     // if switch failsafe
     //   set failsafe (write to eeprom)
 
-    // if new value
-    // update PWM, send 9ms OR 18ms (analog/digital OR D8/D16)
-
     // if no new value after 500ms 
     //   go to failsafe...
+    // 
+    // TODO: change by DEFINE variable
+	if ( millis_inc - outputLoopTimeout < 20 )
+	{
+		outputLoopTimeout = millis_inc;
+        setOutput();
+	}
 
     processISR();
 #ifdef DEBUG
     debugLoop();
 #endif
     micros_();
+}
+
+
+void setOutput()
+{
+    static uint8_t ch_tick[16] = {127};
+    static uint8_t pin_on = 0;
+    static uint8_t current_channel = 0;
+
+    const uint8_t size = sizeof(ch_tick) / sizeof(ch_tick[0]);
+    static uint8_t ch_tick_sorted[size];
+    // set all Pin high (ppm)
+    if ( ! pin_on )
+    {
+        memcpy(ch_tick_sorted, ch_tick, sizeof(ch_tick_sorted));  // Copy unsorted into sorted
+        bubbleSort(ch_tick_sorted, size);
+
+        for (size_t i = 0; i < 16; i++)
+        {
+            // set all pin HIGH
+            // TODO:
+        }
+        pin_on = 1;
+        tick_ppm = 0;
+    }
+
+    if ( tick_ppm > ch_tick_sorted[current_channel])
+    {
+        // set [current_channel] low
+        // TODO:
+
+        current_channel++;
+    }
+    
+    // uint16_t *pulsePtr = PulseTimes;
+    // uint16_t times[4];				// The 4 pulse lengths to process
+    // uint8_t j = 0, k;
+    // uint16_t m;
+
+    // pulsePtr += move_on;
+    // k = move_on;
+
+    // if ( ChannelSwap )		// Link on AD5
+    // {
+    //     // swap chanels 1-8 and 9-16
+    //     ( k >= 8 )? k -= 8 :  k += 8;
+    // }
+
+    // for (uint8_t i = 0; i < 4; i += 1 )
+    // {
+    //     times[i] = pulsePtr[i];                   // Make local copy of pulses to process
+    // }
+   
 }
 
 uint8_t processISR()
@@ -253,6 +381,9 @@ void debugLoop() {
     Serial.print(F("delay millis_: "));
     Serial.println(millis_.time());
 
+
+    Serial.print(F("Delay millis_inc: "));
+    Serial.println(millis_inc);
     Serial.println("-----------"); 
   }
 }
