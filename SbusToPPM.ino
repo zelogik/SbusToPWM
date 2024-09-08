@@ -27,27 +27,24 @@ struct t_pinConfig {
 
 t_pinConfig **outputs_sorted[16]; // Swapped and 8/16 channel set by switch
 t_pinConfig outputs_unsorted[16] = {
-    { &PORTD, 2 , 127},
-    { &PORTD, 3 , 127},
-    { &PORTD, 4 , 127},
-    { &PORTD, 5 , 127},
-    { &PORTB, 0 , 127},
-    { &PORTB, 1 , 127},
-    { &PORTB, 2 , 127},
-    { &PORTB, 3 , 127},
-    { &PORTC, 0 , 127},
-    { &PORTC, 1 , 127},
-    { &PORTC, 2 , 127},
-    { &PORTC, 3 , 127},
-    { &PORTD, 6 , 127},
-    { &PORTD, 7 , 127},
-    { &PORTB, 4 , 127},
-    { nullptr, 0 , 127}
+    { &PORTD, 2, 127},
+    { &PORTD, 3, 1500},
+    { &PORTD, 4, 1500},
+    { &PORTD, 5, 127},
+    { &PORTB, 0, 127},
+    { &PORTB, 1, 127},
+    { &PORTB, 2, 127},
+    { &PORTB, 3, 127},
+    { &PORTC, 0, 127},
+    { &PORTC, 1, 127},
+    { &PORTC, 2, 127},
+    { &PORTC, 3, 127},
+    { &PORTD, 6, 127},
+    { &PORTD, 7, 127},
+    { &PORTB, 4, 127},
+    { nullptr, 0, 127}
     // { &PORTB, null }
 };
-
-uint16_t FailsafeTimes[16] ;
-
 
 volatile uint32_t millis_inc = 0;
 ISR(TIMER0_COMPA_vect)
@@ -59,7 +56,7 @@ ISR(TIMER0_COMPA_vect)
 volatile uint16_t tick_ppm = 0;
 ISR(TIMER2_COMPA_vect)
 {
-  OCR2A += 88; // Advance The COMPA Register
+  OCR2A += 16; // Advance The COMPA Register
   tick_ppm++;
 }
 
@@ -203,9 +200,6 @@ SbusRx sbus(&Serial);
 
 // the setup function runs once when you press reset or power the board
 void init_board() {
-#ifdef DEBUG
-   Serial.begin(57600);
-#endif
 
     // Timer0 : millis
   TCCR0A = 0;           // Init Timer0A
@@ -230,7 +224,7 @@ void init_board() {
   TCCR2A = 0;           // Init Timer2A
   TCCR2B = 0;           // Init Timer2B
   TCCR2B |= B00000001;  // Prescaler = 1
-  OCR2A = 88;        // Timer Compare2A Register
+  OCR2A = 16;        // Timer Compare2A Register
   TIMSK2 |= B00000010;  // Enable Timer COMPA Interrupt
 
     // // Timer1
@@ -260,7 +254,7 @@ void init_board() {
     DDRB |= (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5);  // Set PORTB pins as output
     DDRC |= (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3);  // Set PORTC pins as output
 
-    sbus.Begin();
+    // sbus.Begin();
 
     uint8_t ChannelSwap = 0;
     if ( ( PINC & 0x20 ) == 0 )		// Link on AD5
@@ -297,7 +291,6 @@ void init_board() {
 
 // the loop function runs over and over again forever
 int main() {
-
     // ie: make a "mean" operation with two value
     // int mean = (a & b) + ((a ^ b) >> 1);
 
@@ -318,7 +311,6 @@ int main() {
     while(1)
     {
         static uint32_t outputLoopTimeout = 0;
-    // static uint8_t init_ok = 0;
         static uint32_t blinkLoopTimeout = 0;
         static uint32_t sbusLoopTimeout = 0;
         static uint16_t setFailsafeLoopTimeout = 0;
@@ -353,35 +345,34 @@ int main() {
             setOutput(1);
             outputLoopTimeout = millis_();
         }
+        else
+        {
+            setOutput(0);
+        }
 
-        if ( millis_() - blinkLoopTimeout > 1000 )
+        if ( millis_() - blinkLoopTimeout > 999 )
         {
             blinkLoopTimeout = millis_();
             PINB |= (1 << PINB5); // PINB = PORTB ^ B00100000; //(1 << PINB5);
         }
 
-        if ( millis_() - setFailsafeLoopTimeout < 500 * 1000 ) // ie: 500ms
-        {
-          if (( PINC & 0x10 ) == 0 ) // Failsafe Switch
-          {
-            // ie: bufferoverflow after 54days?
-            // After 500ms, disable posibility to set failsafe with switch
-            writeFailpulseToEEPROM();
-          }
-        }
-
-        setOutput(0);
+        // if ( millis_() - setFailsafeLoopTimeout < 500 * 1000 ) // ie: 500ms
+        // {
+        //   if (( PINC & 0x10 ) == 0 ) // Failsafe Switch
+        //   {
+        //     // ie: bufferoverflow after 54days?
+        //     // After 500ms, disable posibility to set failsafe with switch
+        //     writeFailpulseToEEPROM();
+        //   }
+        // }
         // processISR();
-    #ifdef DEBUG
-        debugLoop();
-    #endif
     }
     return 0;
 }
 
 void sbusPPMScale()
 {
-
+  // SBUS to PPM pulse, with scaling ?
 }
 
 
@@ -397,11 +388,10 @@ void setOutput(uint8_t init)
 
     if ( init ) // ! pin_on && 
     {
-        constexpr uint8_t size = sizeof(order_pulse_down) / sizeof(order_pulse_down[0]);
-        cli();
+        const uint8_t size = sizeof(order_pulse_down) / sizeof(order_pulse_down[0]);
+        // cli();
         sortByPulse(outputs_unsorted, order_pulse_down, size);
         // memcpy(ch_tick_sorted, ch_tick, sizeof(ch_tick_sorted));  // Copy unsorted into sorted
-        sei();
         // bubbleSort(ch_tick_sorted, size);
 
         // t_pinConfig **output_sorted_ptr[16];
@@ -412,6 +402,8 @@ void setOutput(uint8_t init)
             pin = outputs_unsorted[i].pin; //(*outputs_sorted[i])->pin;
             *port |= (1 << pin);
         }
+        // sei();
+
         // pin_on = 1;
         current_channel = 0;
         tick_ready = 0;
@@ -423,14 +415,15 @@ void setOutput(uint8_t init)
     if ( current_channel < 16 )
     {
       // Set "neutral" by low offset, approx 800us
-      if ( tick_ppm > ( 118 ) && ! tick_ready )
-      {
-        tick_ready = 1;
-        tick_ppm = 0;
-      }
+      // if ( tick_ppm > ( 118 ) && ! tick_ready )
+      // {
+      //   tick_ready = 1;
+      //   tick_ppm = 0;
+      // }
 
       uint8_t order = order_pulse_down[current_channel];
-      if (( tick_ppm > outputs_unsorted[order].pulse ) && tick_ready )
+      // cli();
+      if ( tick_ppm > outputs_unsorted[order].pulse ) //&& tick_ready )
       {
           // set [current_channel] low
     //   uint8_t order = order_pulse_down[i];
@@ -442,6 +435,7 @@ void setOutput(uint8_t init)
           *port &= ~(1 << pin);
           current_channel++;
       }
+      // sei();
     }
     
     // uint16_t *pulsePtr = PulseTimes;
@@ -467,7 +461,6 @@ void setOutput(uint8_t init)
 
 void eeprom_write_byte_cmp (uint8_t dat, uint16_t pointer_eeprom)
 {
-  //see /home/thus/work/avr/avrsdk4/avr-libc-1.4.4/libc/misc/eeprom.S:98 143
   while(EECR & (1<<EEPE)) /* make sure EEPROM is ready */
   {
   }
@@ -496,8 +489,10 @@ void writeFailpulseToEEPROM() {
         // Write the low byte and high byte of failpulse to EEPROM
         eeprom_write_byte_cmp((uint8_t *)eepromAddress, lowByte);
         eeprom_write_byte_cmp((uint8_t *)(eepromAddress + 1), highByte);
+        sei();
     }
 }
+
 
 void readFailpulseFromEEPROM() {
     for (uint8_t i = 0; i < 16; i++) {
@@ -516,41 +511,8 @@ void readFailpulseFromEEPROM() {
 uint32_t millis_()
 {
     uint32_t millis_tmp;
-    cli();
+    // cli();
     millis_tmp = millis_inc;
-    sei();
+    // sei();
     return millis_tmp;
 }
-
-
-// void debugLoop() {
-//   static const uint16_t interval = 1000;  // interval at which to blink (milliseconds)
-//   static uint32_t previousMillis = 0;  // will store last time LED was updated
-//   uint32_t currentMillis = millis();
-
-//   if (currentMillis - previousMillis > interval) {
-//     previousMillis = currentMillis;
-
-//     static uint16_t old_micros;
-//     Serial.print(F("micros delay: "));
-//     uint16_t delayMicrosOriginal = micros();
-//     Serial.println(delayMicrosOriginal);
-//     Serial.print(F("micro lag: "));
-//     Serial.println(delayMicrosOriginal - old_micros);
-//     old_micros = delayMicrosOriginal;
-
-//     Serial.print(F("delay millis: "));
-//     uint32_t delayMillisOriginal = millis();
-//     Serial.println(delayMillisOriginal);
-
-//     // Serial.print(F("delay micros_: "));
-//     // Serial.println(micros_());
-//     // Serial.print(F("delay millis_: "));
-//     // Serial.println(millis_.time());
-
-
-//     Serial.print(F("Delay millis_inc: "));
-//     Serial.println(millis_inc);
-//     Serial.println("-----------"); 
-//   }
-// }
