@@ -13,9 +13,9 @@
 // #define PRESCALER 8        // Assuming Timer1 is configured with a prescaler of 8
 // #define DEBUG
 
-#define ENABLE_TICK_INTERRUPT( )       ( TIMSK2 |= ( 1<< OCIE2A ) )
-#define DISABLE_TICK_INTERRUPT( )      ( TIMSK2 &= ~( 1<< OCIE2A ) )
-#define CLEAR_TICK_INTERRUPT( )        ( TIFR2 = (1 << OCF2A) )
+// #define ENABLE_TICK_INTERRUPT( )       ( TIMSK2 |= ( 1<< OCIE2A ) )
+// #define DISABLE_TICK_INTERRUPT( )      ( TIMSK2 &= ~( 1<< OCIE2A ) )
+// #define CLEAR_TICK_INTERRUPT( )        ( TIFR2 = (1 << OCF2A) )
 
 // Not the best, precise millis class, but enought for that code
 // class MyMillis {
@@ -143,25 +143,6 @@ uint8_t sortByPulse(const t_pinConfig arr[], uint8_t order[], uint8_t size) {
 }
 
 
-void bubbleSort(uint16_t arr[], uint8_t n) {
-    for (uint8_t i = 0; i < n-1; i++) {
-        bool swapped = false;
-        for (uint8_t j = 0; j < n-i-1; j++) {
-            if (arr[j] > arr[j+1]) {
-                // Swap arr[j] and arr[j+1]
-                uint16_t temp = arr[j];
-                arr[j] = arr[j+1];
-                arr[j+1] = temp;
-                swapped = true;
-            }
-        }
-        if (!swapped) {
-            break;
-        }
-    }
-}
-
-
 // the setup function runs once when you press reset or power the board
 void init_board() {
   // initialize digital pin LED_BUILTIN as an output.
@@ -222,31 +203,31 @@ void init_board() {
     DDRD |= (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7);  // Set PORTD pins as output
     DDRB |= (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5);  // Set PORTB pins as output
     DDRC |= (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3);  // Set PORTC pins as output
-  DDRB |= (1 << DDB5);
 
     uint8_t ChannelSwap = 0;
-	if ( ( PINC & 0x20 ) == 0 )		// Link on AD5
-	{
-		ChannelSwap = 1 ;
-	}
-    uint8_t EightOnly = 0;
-	if ( ( PIND & 0x02 ) == 0 )		// Link on PD1
-	{
-		EightOnly = 1 ;
-	}
+    if ( ( PINC & 0x20 ) == 0 )		// Link on AD5
+    {
+      ChannelSwap = 1 ;
+    }
+      uint8_t EightOnly = 0;
+    if ( ( PIND & 0x02 ) == 0 )		// Link on PD1
+    {
+      EightOnly = 1 ;
+    }
 
     t_pinConfig *port_pin_ptr = outputs_unsorted;
 
     for (uint8_t i = 0; i < 16; i++)
     {
+        // ( i >= 8 && ChannelSwap ) ? outputs_sorted[i] = &port_pin_ptr++ : outputs_sorted[i] = &port_pin_ptr++;
         if ( i >= 8 && ChannelSwap)
         {
-          outputs_sorted[i] = &port_pin_ptr;
+          outputs_sorted[i-8] = &port_pin_ptr;
         }
         else
         {
           // port_pin[i] -= 8;
-          outputs_sorted[i] = &port_pin_ptr;
+          outputs_sorted[i+8] = &port_pin_ptr;
         }
         port_pin_ptr++;
     }
@@ -314,7 +295,6 @@ void setOutput(uint8_t init)
     static uint8_t current_channel = 0;
     static uint8_t order_pulse_down[16];
     static uint8_t tick_ready = 0;
-
 
     static uint8_t *port;
     static uint8_t pin;
@@ -483,77 +463,34 @@ uint8_t processISR()
     }
 }
 
-void debugLoop() {
-  static const uint16_t interval = 1000;  // interval at which to blink (milliseconds)
-  static uint32_t previousMillis = 0;  // will store last time LED was updated
-  uint32_t currentMillis = millis();
+// void debugLoop() {
+//   static const uint16_t interval = 1000;  // interval at which to blink (milliseconds)
+//   static uint32_t previousMillis = 0;  // will store last time LED was updated
+//   uint32_t currentMillis = millis();
 
-  if (currentMillis - previousMillis > interval) {
-    previousMillis = currentMillis;
+//   if (currentMillis - previousMillis > interval) {
+//     previousMillis = currentMillis;
 
-    // PINB |= (1 << 5);
+//     static uint16_t old_micros;
+//     Serial.print(F("micros delay: "));
+//     uint16_t delayMicrosOriginal = micros();
+//     Serial.println(delayMicrosOriginal);
+//     Serial.print(F("micro lag: "));
+//     Serial.println(delayMicrosOriginal - old_micros);
+//     old_micros = delayMicrosOriginal;
 
-    static uint16_t old_micros;
-    Serial.print(F("micros delay: "));
-    uint16_t delayMicrosOriginal = micros();
-    Serial.println(delayMicrosOriginal);
-    Serial.print(F("micro lag: "));
-    Serial.println(delayMicrosOriginal - old_micros);
-    old_micros = delayMicrosOriginal;
+//     Serial.print(F("delay millis: "));
+//     uint32_t delayMillisOriginal = millis();
+//     Serial.println(delayMillisOriginal);
 
-    Serial.print(F("delay millis: "));
-    uint32_t delayMillisOriginal = millis();
-    Serial.println(delayMillisOriginal);
-
-    Serial.print(F("delay micros_: "));
-    Serial.println(micros_());
-    // Serial.print(F("delay millis_: "));
-    // Serial.println(millis_.time());
+//     // Serial.print(F("delay micros_: "));
+//     // Serial.println(micros_());
+//     // Serial.print(F("delay millis_: "));
+//     // Serial.println(millis_.time());
 
 
-    Serial.print(F("Delay millis_inc: "));
-    Serial.println(millis_inc);
-    Serial.println("-----------"); 
-  }
-}
-
-
-uint16_t micros_() {
-    // Calculate how many clock cycles occur per microsecond
-    // F_CPU / 1,000,000 gives the number of clock cycles per microsecond
-    // With a prescaler of 8, you divide that value by 8
-    // static const uint32_t cycles_per_microsecond = (F_CPU / 1000000UL) / PRESCALER;
-
-    // Get the current value of Timer1
-    // Should be 2... so >> 1
-    uint16_t timer_value = TCNT1 >> 1;
-
-    static uint8_t old_add_millis = 0;
-    uint8_t add_millis = timer_value >> 10;
-
-    // Serial.println(modulo);
-
-    if (add_millis > 0)
-    {
-      if (add_millis != old_add_millis)
-      {
-        // millis_.time(add_millis - old_add_millis);
-        old_add_millis = add_millis;
-      }
-      if (add_millis > 31)
-      {
-        // ERROR, loop too long ?
-        // CHECK: buffer overflow ie:65535?
-      }
-      else if (add_millis > 24) // It give 30ms for a loop in micros_
-      {
-        old_add_millis = 0;
-        cli();
-        TCNT1 = 0;
-        sei();
-      }
-    }
-
-
-    return timer_value;
-}
+//     Serial.print(F("Delay millis_inc: "));
+//     Serial.println(millis_inc);
+//     Serial.println("-----------"); 
+//   }
+// }
