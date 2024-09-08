@@ -107,7 +107,7 @@ ISR(USART0_RX_vect) {
     {
         // Start only if delay passed.
         // give 5ms for postprocessing that sbus
-        if ( millis_inc - sbus.Slast_rcv_ms > 5 )
+        if ( millis_() - sbus.Slast_rcv_ms > 5 )
         {
             // TODO: check corrupted ?
             uint8_t idx = sbus.Sindex;
@@ -115,7 +115,7 @@ ISR(USART0_RX_vect) {
             sbus.Sbuffer[idx] = rx_byte;
             if ( idx > 24 ) //Sbus = 25bytes
             {
-                sbus.Slast_rcv_ms == millis_inc;
+                sbus.Slast_rcv_ms == millis_();
                 sbus.need_process = 1;
             }
         }
@@ -264,15 +264,15 @@ int main() {
     // static uint8_t init_ok = 0;
         static uint32_t blinkLoopTimeout = 0;
 
-        if ( millis_inc - outputLoopTimeout > 19 )
+        if ( millis_() - outputLoopTimeout > 19 )
         {
             setOutput(1);
-            outputLoopTimeout = millis_inc;
+            outputLoopTimeout = millis_();
         }
 
-        if ( millis_inc - blinkLoopTimeout > 1000 )
+        if ( millis_() - blinkLoopTimeout > 1000 )
         {
-            blinkLoopTimeout = millis_inc;
+            blinkLoopTimeout = millis_();
             PINB |= (1 << PINB5); // PINB = PORTB ^ B00100000; //(1 << PINB5);
         }
 
@@ -467,6 +467,17 @@ uint8_t processISR()
         sbus.need_process = 0;
     }
 }
+
+
+uint32_t millis_()
+{
+    uint32_t millis_tmp;
+    cli();
+    millis_tmp = millis_inc;
+    sei();
+    return millis_tmp;
+}
+
 
 // void debugLoop() {
 //   static const uint16_t interval = 1000;  // interval at which to blink (milliseconds)
