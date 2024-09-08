@@ -298,7 +298,7 @@ void setOutput(uint8_t init)
 
     static uint8_t *port;
     static uint8_t pin;
-    static uint8_t order[16];
+    // static uint8_t order[16];
     // TODO: Make the swap here ?
     // static t_pinConfig *port_pin_ptr = &outputs_sorted;
 
@@ -306,7 +306,7 @@ void setOutput(uint8_t init)
     {
         const uint8_t size = sizeof(order_pulse_down) / sizeof(order_pulse_down[0]);
         cli();
-        sortByPulse(outputs_unsorted, order, size);
+        sortByPulse(outputs_unsorted, order_pulse_down, size);
         // memcpy(ch_tick_sorted, ch_tick, sizeof(ch_tick_sorted));  // Copy unsorted into sorted
         sei();
         // bubbleSort(ch_tick_sorted, size);
@@ -315,8 +315,8 @@ void setOutput(uint8_t init)
         for (size_t i = 0; i < 16; i++)
         {
             // output_sorted_ptr[i] = &outputs_sorted[i];
-            port = (*outputs_sorted[i])->port;
-            pin = (*outputs_sorted[i])->pin;
+            port = outputs_unsorted[i].port; //(*outputs_sorted[i])->port;
+            pin = outputs_unsorted[i].pin; //(*outputs_sorted[i])->pin;
             *port |= (1 << pin);
         }
         // pin_on = 1;
@@ -330,17 +330,22 @@ void setOutput(uint8_t init)
     if ( current_channel < 16 )
     {
       // Set "neutral" by low offset, approx 800us
-      if ( tick_ppm > ( 127 * 8 ) && ! tick_ready )
+      if ( tick_ppm > ( 118 ) && ! tick_ready )
       {
         tick_ready = 1;
         tick_ppm = 0;
       }
 
-      if (( tick_ppm > order_pulse_down[current_channel] ) )// && tick_ready)
+      uint8_t order = order_pulse_down[current_channel];
+      if (( tick_ppm > outputs_unsorted[order].pulse ) && tick_ready )
       {
           // set [current_channel] low
-          port = (*outputs_sorted[current_channel])->port;
-          pin = (*outputs_sorted[current_channel])->pin;
+    //   uint8_t order = order_pulse_down[i];
+    //   uint8_t port = &outputs_unsorted[order].port;
+    //   uint8_t pin = outputs_unsorted[order].pin; //(*outputs_sorted[i])->pin;
+    //   uint8_t pulse = outputs_unsorted[order].pulse; //(*outputs_sorted[i])->pulse;
+          port = outputs_unsorted[order].port; //(*outputs_sorted[current_channel])->port;
+          pin = outputs_unsorted[order].pin; //(*outputs_sorted[current_channel])->pin;
           *port &= ~(1 << pin);
           current_channel++;
           // PORTB &= ~(1 << PORTB5);
