@@ -3,6 +3,11 @@
 
 WIP !!! must not work now...
 
+Ref:
+https://github.com/bolderflight/sbus
+https://github.com/MikeBland/SbusToPWM
+
+
 
 TODO:
 - make a 'tiny/nano' pcb for attiny1616 or attiny328
@@ -28,10 +33,6 @@ to 8 channel only mode, but with a servo update rate of 9mS.
 
 Connections:
 <img src="Docs/Wiring.jpg"/>
-
-
-Original 'amazing' code from:
-https://github.com/MikeBland/SbusToPWM
 
 
 ## License and Disclaimer

@@ -3,26 +3,19 @@
 // TODO:
 // - add channel number swap D8 or D16
 // ie: so could be digital or analogic
-// - add failsafe logic
-// - test sbus to struct...
-// - 
+// - add scaling sbus -> ppm
+
 #include <avr/eeprom.h>
 
 #define F_CPU 16000000UL  // Define CPU frequency as 16 MHz (typical for Arduino Uno)
+#define EEPROM_START_ADDRESS 0x10  // Starting EEPROM address
+
 // #define PRESCALER 8        // Assuming Timer1 is configured with a prescaler of 8
 // #define DEBUG
 
 // #define ENABLE_TICK_INTERRUPT( )       ( TIMSK2 |= ( 1<< OCIE2A ) )
 // #define DISABLE_TICK_INTERRUPT( )      ( TIMSK2 &= ~( 1<< OCIE2A ) )
 // #define CLEAR_TICK_INTERRUPT( )        ( TIFR2 = (1 << OCF2A) )
-
-// struct t_rx_sbus
-// {
-//     uint8_t Sbuffer[28];
-//     uint8_t Sindex = 0;	
-//     uint8_t Slast_rcv_ms = 0;
-//     uint8_t need_process = 0;
-// } volatile sbus;
 
 
 struct t_pinConfig {
@@ -70,30 +63,6 @@ ISR(TIMER2_COMPA_vect)
   tick_ppm++;
 }
 
-// ISR(USART0_RX_vect) {
-//     // ISR triggered when data is received
-//     uint8_t rx_byte = UDR0;  // Read the received data from the UART data register
-
-//     // SBUS messages take 3ms to communicate. Typical repeat intervals are: 14ms (analog mode), 7ms (high speed mode).
-//     // TODO: add if Sto_proceed is false...
-//     if ( ! sbus.need_process )
-//     {
-//         // Start only if delay passed.
-//         // give 5ms for postprocessing that sbus
-//         if ( millis_() - sbus.Slast_rcv_ms > 5 )
-//         {
-//             // TODO: check corrupted ?
-//             uint8_t idx = sbus.Sindex;
-
-//             sbus.Sbuffer[idx] = rx_byte;
-//             if ( idx > 24 ) //Sbus = 25bytes
-//             {
-//                 sbus.Slast_rcv_ms == millis_();
-//                 sbus.need_process = 1;
-//             }
-//         }
-//     }
-// }
 
 // loop over outputs_unsorted, return i_position, by low pulse -> high pulse
 uint8_t sortByPulse(const t_pinConfig arr[], uint8_t order[], uint8_t size) {
@@ -362,6 +331,7 @@ int main() {
             {
               // .. do some actualisation sbus -> pulse
               check_failsafe = 0;
+              sbusPPMScale();
             }
             else
             {
@@ -408,6 +378,12 @@ int main() {
     }
     return 0;
 }
+
+void sbusPPMScale()
+{
+
+}
+
 
 void setOutput(uint8_t init)
 {
@@ -488,98 +464,6 @@ void setOutput(uint8_t init)
     // }
 }
 
-// uint8_t processISR()
-// {
-//     // asm volatile ("nop\n\t");
-//     // https://os.mbed.com/users/Digixx/code/SBUS-Library_16channel
-//     if ( sbus.need_process )
-//     {
-//         uint8_t *sbus_ptr = sbus.Sbuffer;
-
-//         if ( *sbus_ptr++ != 0x0F ) // sbus.Sbuffer[0]
-//         {
-//             return 0;
-//         }
-//         else if (sbus.Sbuffer[24] == 0x00 )
-//         {
-//             uint8_t inputbitsavailable = 0;
-//             uint32_t inputbits = 0;
-
-//             for (uint8_t i = 0 ; i < 16 ; i += 1 )
-//             {
-//                 uint16_t value = 0;
-//                 while ( inputbitsavailable < 11 )
-//                 {
-//                     inputbits |= (uint32_t)*sbus_ptr++ << inputbitsavailable;
-//                     inputbitsavailable += 8;
-//                 }
-//                 value = (int16_t)(inputbits & 0x7FF) - 0x3E0;
-//                 value = (value << 2) + value; // Equivalent to value * 5
-//                 value = (value >> 3) + 1500;
-//                 if ( ( value > 800 ) && ( value < 2200 ) )
-//                 {
-//                     pulseTimes[i] = value;
-//                 }
-//                 // else
-//                 // {
-//                 //     // don't change value?
-//                 // }
-//                 inputbitsavailable -= 11;
-//                 inputbits >>= 11;
-//             }
-//             // DigiChannel 1
-//             if (sbus.Sbuffer[23] & (1<<0)) {
-//                 pulseTimes[16] = 1;
-//             }else{
-//                 pulseTimes[16] = 0;
-//             }
-//             // DigiChannel 2
-//             if (sbus.Sbuffer[23] & (1<<1)) {
-//                 pulseTimes[17] = 1;
-//             }else{
-//                 pulseTimes[17] = 0;
-//             }
-//             // Failsafe
-//             // failsafe_status = SBUS_SIGNAL_OK;
-//             if (sbus.Sbuffer[23] & (1<<2)) {
-//                 // failsafe_status = SBUS_SIGNAL_LOST;
-//             }
-//             if (sbus.Sbuffer[23] & (1<<3)) {
-//                 // failsafe_status = SBUS_SIGNAL_FAILSAFE;
-//             }
-
-//                 // TODO: Test and should be more readable
-//            // uint8_t byte_in_sbus = 1;
-//             // uint8_t bit_in_sbus = 0;
-//             // uint8_t channel = 0;
-//             // uint8_t bit_in_channel = 0;
-
-//             // for (uint8_t i=0; i<176; i++ ) {
-//             //     if ( sbus.Sbuffer[byte_in_sbus] & (1<<bit_in_sbus) ) {
-//             //         pulseTimes[channel] |= (1<<bit_in_channel);
-//             //     }
-//             //     bit_in_sbus++;
-//             //     bit_in_channel++;
-
-//             //     if ( bit_in_sbus == 8 ) {
-//             //         bit_in_sbus =0;
-//             //         byte_in_sbus++;
-//             //     }
-//             //     if ( bit_in_channel == 11 ) {
-//             //         bit_in_channel =0;
-//             //         channel++;
-//             //     }
-//             // }
-//         }
-//         else
-//         {
-//             return 0;
-//         }
-//         sbus.need_process = 0;
-//     }
-// }
-
-#define EEPROM_START_ADDRESS 0x10  // Starting EEPROM address
 
 void eeprom_write_byte_cmp (uint8_t dat, uint16_t pointer_eeprom)
 {
